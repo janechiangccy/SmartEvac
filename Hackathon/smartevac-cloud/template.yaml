@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SmartEvac — Hazard Orchestrator + Scenario Trigger (Lambda + IoT Core + Gemini + TTS)
+
+# ──────────────────────────────────────────────────────────────────────────
+# Phase 1：先把 Lambda 鏈路 + IoT publish + S3 + Gemini + TTS 跑通。
+# DynamoDB 與 Cognito Identity Pool（給瀏覽器訂閱用）下個階段再加。
+# 部署：sam deploy --guided
+# ──────────────────────────────────────────────────────────────────────────
+
+Parameters:
+  BucketName:
+    Type: String
+    Default: smartevac-6124991
+    Description: S3 bucket 名稱（全 AWS 唯一）
+
+  GoogleApiKey:
+    Type: String
+    NoEcho: true
+    Description: |
+      Gemini API key（aistudio.google.com/apikey 取得）
+      AI Studio key 只能用 Gemini，TTS 要另一把
+
+  GoogleTtsApiKey:
+    Type: String
+    NoEcho: true
+    Description: |
+      Google Cloud TTS API key（Cloud Console → 憑證另建）
+      建議限定只能呼叫 Cloud Text-to-Speech API
+
+  GeminiModel:
+    Type: String
+    Default: gemini-2.5-flash-lite
+    Description: Gemini model ID
+
+  GoogleTtsVoice:
+    Type: String
+    Default: cmn-TW-Wavenet-A
+    Description: |
+      Google Cloud TTS voice（繁中）
+      可選：cmn-TW-Wavenet-A/B/C、cmn-TW-Standard-A/B/C
+
+  IotEndpoint:
+    Type: String
+    Default: change-me-ats.iot.us-east-1.amazonaws.com
+    Description: |
+      IoT Core ATS endpoint
+      aws iot describe-endpoint --endpoint-type iot:Data-ATS
+
+  IotTopicPrefix:
+    Type: String
+    Default: smartevac/cmd
+    Description: 下行指令 topic prefix（後接 /<node_id>）
+
+  TelemetryTopicPrefix:
+    Type: String
+    Default: smartevac/telemetry
+    Description: 上行 telemetry topic prefix（IoT Rule SQL 訂閱 prefix/+）
+
+  PresignedUrlTtl:
+    Type: Number
+    Default: 600
+    Description: Presigned URL 有效期（秒）
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 60
+    MemorySize: 512
+    Architectures: [x86_64]
+
+Resources:
+
+  # ── S3 Bucket：存合成的 mp3 ─────────────────────────────────────────
+  EvacBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      LifecycleConfiguration:
+        Rules:
+          - Id: AutoDeleteAudioAfter1Day
+            Status: Enabled
+            Prefix: audio/
+            ExpirationInDays: 1
+
+  # ── Lambda：Hazard Orchestrator（IoT Rule 觸發）───────────────────
+  HazardOrchestratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: smartevac-hazard-orchestrator
+      # ⚠️ Learner Lab 限制：必須用 LabRole
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/LabRole
+      CodeUri: src/hazard_orchestrator/
+      Handler: handler.lambda_handler
+      Environment:
+        Variables:
+          GOOGLE_API_KEY: !Ref GoogleApiKey
+          GOOGLE_TTS_API_KEY: !Ref GoogleTtsApiKey
+          GEMINI_MODEL: !Ref GeminiModel
+          GOOGLE_TTS_VOICE: !Ref GoogleTtsVoice
+          OUTPUT_BUCKET: !Ref BucketName
+          IOT_ENDPOINT: !Ref IotEndpoint
+          IOT_TOPIC_PREFIX: !Ref IotTopicPrefix
+          PRESIGNED_URL_TTL: !Ref PresignedUrlTtl
+      Events:
+        TelemetryAlert:
+          Type: IoTRule
+          Properties:
+            Sql: !Sub "SELECT * FROM '${TelemetryTopicPrefix}/+' WHERE alert_level = 'alert'"
+            AwsIotSqlVersion: '2016-03-23'
+
+  # ── Lambda：Scenario Trigger（API Gateway 觸發）──────────────────
+  ScenarioTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: smartevac-scenario-trigger
+      Role: !Sub arn:aws:iam::${AWS::AccountId}:role/LabRole
+      CodeUri: src/scenario_trigger/
+      Handler: handler.lambda_handler
+      Timeout: 30
+      Environment:
+        Variables:
+          IOT_ENDPOINT: !Ref IotEndpoint
+          TELEMETRY_TOPIC_PREFIX: !Ref TelemetryTopicPrefix
+      Events:
+        ScenarioApi:
+          Type: Api
+          Properties:
+            Path: /scenario/{name}
+            Method: POST
+
+Outputs:
+  BucketName:
+    Description: SmartEvac S3 bucket
+    Value: !Ref EvacBucket
+
+  HazardOrchestratorArn:
+    Description: Hazard Orchestrator Lambda ARN
+    Value: !GetAtt HazardOrchestratorFunction.Arn
+
+  ScenarioTriggerArn:
+    Description: Scenario Trigger Lambda ARN
+    Value: !GetAtt ScenarioTriggerFunction.Arn
+
+  ScenarioApiUrl:
+    Description: 情境觸發 API（POST {url}{name}）
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/scenario/"
+
+  CmdTopicPrefix:
+    Description: 下階段 dashboard / Pi 訂閱 ${prefix}/+
+    Value: !Ref IotTopicPrefix
+
+  TelemetryTopicPrefix:
+    Description: ScenarioTrigger publish 到此 prefix；IoT Rule 訂閱 prefix/+
+    Value: !Ref TelemetryTopicPrefix
