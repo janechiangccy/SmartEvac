@@ -1,0 +1,9 @@
+.env
+env.json
+.aws-sam/
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.DS_Store
+local_out/

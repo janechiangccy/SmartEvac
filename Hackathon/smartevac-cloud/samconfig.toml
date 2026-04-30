@@ -1,0 +1,12 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "smartevac-cloud"
+resolve_s3 = true
+s3_prefix = "smartevac-cloud"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = false
+fail_on_empty_changeset = false
+# NoEcho 參數（GoogleApiKey, GoogleTtsApiKey）刻意不寫進來，
+# 透過 sam deploy --parameter-overrides 在 deploy 時帶入。
+parameter_overrides = "BucketName=smartevac-6124991 IotEndpoint=a1f4azzpj5k3zw-ats.iot.us-east-1.amazonaws.com"

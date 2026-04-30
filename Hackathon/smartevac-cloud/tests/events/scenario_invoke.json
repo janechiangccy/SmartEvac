@@ -1,0 +1,11 @@
+{
+  "resource": "/scenario/{name}",
+  "path": "/scenario/chemical_lab_leak",
+  "httpMethod": "POST",
+  "pathParameters": {
+    "name": "chemical_lab_leak"
+  },
+  "headers": {"Content-Type": "application/json"},
+  "body": null,
+  "isBase64Encoded": false
+}
