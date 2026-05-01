@@ -7,3 +7,5 @@ __pycache__/
 *.egg-info/
 .DS_Store
 local_out/
+subscriber/certs/*
+!subscriber/certs/.gitkeep
