@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import time
+from decimal import Decimal
 from pathlib import Path
 
 import boto3
@@ -29,10 +30,12 @@ TELEMETRY_TOPIC_PREFIX = os.environ.get(
 ALERT_THRESHOLD_MQ2 = float(os.environ.get("ALERT_THRESHOLD_MQ2", "0.5"))
 ALERT_THRESHOLD_MQ135 = float(os.environ.get("ALERT_THRESHOLD_MQ135", "0.7"))
 ALERT_THRESHOLD_TEMP = float(os.environ.get("ALERT_THRESHOLD_TEMP", "35"))
+TELEMETRY_TABLE = os.environ.get("TELEMETRY_TABLE", "SmartEvacTelemetry")
 
 SCENARIO_DIR = Path(__file__).parent / "scenarios"
 
 _iot_client = None
+_dynamodb = None
 
 
 def _client():
@@ -43,6 +46,33 @@ def _client():
             endpoint_url=f"https://{IOT_ENDPOINT}",
         )
     return _iot_client
+
+
+def _dynamo():
+    global _dynamodb
+    if _dynamodb is None:
+        _dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+    return _dynamodb
+
+
+def _write_telemetry_to_dynamo(reading: dict) -> None:
+    """Write telemetry reading to DynamoDB TelemetryTable."""
+    if not TELEMETRY_TABLE:
+        return
+    try:
+        table = _dynamo().Table(TELEMETRY_TABLE)
+        ts = reading["ts"]
+        table.put_item(Item={
+            "node_id": reading["node_id"],
+            "ts": ts,
+            "mq2": Decimal(str(reading.get("mq2", 0.0))),
+            "mq135": Decimal(str(reading.get("mq135", 0.0))),
+            "temp_c": Decimal(str(reading.get("temp_c", 24.0))),
+            "alert_level": reading.get("alert_level", "normal"),
+            "ttl": ts + 120,  # expire after 2 minutes
+        })
+    except Exception as e:
+        logger.warning(f"DynamoDB write failed (non-fatal): {e}")
 
 
 def load_scenario(name: str) -> dict:
@@ -115,6 +145,21 @@ def lambda_handler(event: dict, context) -> dict:
     alert_emitted_in_run = False
     t_start = time.time()
 
+    # Pre-scan: write ALL above-threshold readings to DynamoDB before the main loop.
+    # This ensures HazardOrchestrator sees the full contamination picture when triggered,
+    # even if multiple nodes exceed thresholds at different times in the scenario.
+    for evt in scenario["events"]:
+        pre_reading = {
+            "node_id": evt["node_id"],
+            "ts": int(time.time()),
+            "mq2": float(evt.get("mq2", 0.0)),
+            "mq135": float(evt.get("mq135", 0.0)),
+            "temp_c": float(evt.get("temp_c", 24.0)),
+            "alert_level": "pre_scan",
+        }
+        if compute_alert_level(pre_reading) == "alert":
+            _write_telemetry_to_dynamo(pre_reading)
+
     for evt in scenario["events"]:
         # 依時間軸節流（cap 1 秒避免 Lambda 卡死，scenario 應 <=8 秒）
         delay = float(evt["t"]) - last_t
@@ -139,6 +184,8 @@ def lambda_handler(event: dict, context) -> dict:
                 reading["alert_level"] = "alert"
                 alert_emitted_in_run = True
                 hazard_triggers += 1
+                # IoT Rule handles triggering HazardOrchestrator via SQL filter
+                logger.info(f"Alert emitted for {node_id}, IoT Rule will trigger HazardOrchestrator")
         else:
             reading["alert_level"] = raw_level
 
@@ -153,6 +200,8 @@ def lambda_handler(event: dict, context) -> dict:
                 published += 1
             except ClientError as e:
                 logger.error(f"publish failed {topic}: {e}")
+        # Write to DynamoDB so HazardOrchestrator can read recent telemetry
+        _write_telemetry_to_dynamo(reading)
         logger.info(
             f"t={evt['t']:.1f} {topic} "
             f"alert={reading['alert_level']} "

@@ -7,6 +7,6 @@ region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = false
 fail_on_empty_changeset = false
-# NoEcho 參數（GoogleApiKey, GoogleTtsApiKey）刻意不寫進來，
-# 透過 sam deploy --parameter-overrides 在 deploy 時帶入。
-parameter_overrides = "BucketName=smartevac-6124991 IotEndpoint=a1f4azzpj5k3zw-ats.iot.us-east-1.amazonaws.com"
+# NoEcho params (GoogleApiKey, GoogleTtsApiKey) are intentionally omitted here.
+# Pass them via: sam deploy --parameter-overrides at deploy time.
+parameter_overrides = "BucketName=smartevac-6124991 IotEndpoint=change-me-ats.iot.us-east-1.amazonaws.com"

@@ -68,6 +68,11 @@ Globals:
     Timeout: 60
     MemorySize: 512
     Architectures: [x86_64]
+  Api:
+    Cors:
+      AllowMethods: "'POST,OPTIONS'"
+      AllowHeaders: "'Content-Type'"
+      AllowOrigin: "'*'"
 
 Resources:
 
@@ -102,6 +107,8 @@ Resources:
           IOT_ENDPOINT: !Ref IotEndpoint
           IOT_TOPIC_PREFIX: !Ref IotTopicPrefix
           PRESIGNED_URL_TTL: !Ref PresignedUrlTtl
+          TOPOLOGY_TABLE: SmartEvacTopology
+          TELEMETRY_TABLE: SmartEvacTelemetry
       Events:
         TelemetryAlert:
           Type: IoTRule
@@ -117,11 +124,12 @@ Resources:
       Role: !Sub arn:aws:iam::${AWS::AccountId}:role/LabRole
       CodeUri: src/scenario_trigger/
       Handler: handler.lambda_handler
-      Timeout: 30
+      Timeout: 25
       Environment:
         Variables:
           IOT_ENDPOINT: !Ref IotEndpoint
           TELEMETRY_TOPIC_PREFIX: !Ref TelemetryTopicPrefix
+          TELEMETRY_TABLE: SmartEvacTelemetry
       Events:
         ScenarioApi:
           Type: Api

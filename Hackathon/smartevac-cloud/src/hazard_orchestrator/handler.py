@@ -158,6 +158,17 @@ def lambda_handler(event: dict, context) -> dict:
     }
     publish_results = parallel_publish(commands)
 
+    # 7. 存最新路由結果到 S3（dashboard polling 用）
+    try:
+        s3.put_object(
+            Bucket=OUTPUT_BUCKET,
+            Key="latest-routes.json",
+            Body=json.dumps(commands, ensure_ascii=False),
+            ContentType="application/json",
+        )
+    except ClientError as e:
+        logger.warning(f"latest-routes.json 上傳失敗（非致命）：{e}")
+
     elapsed_ms = int((time.time() - t_start) * 1000)
     ok_count = sum(1 for v in publish_results.values() if v)
     logger.info(

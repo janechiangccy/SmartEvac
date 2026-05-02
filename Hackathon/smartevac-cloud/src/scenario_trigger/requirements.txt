@@ -1,1 +1,1 @@
-# boto3 由 Lambda runtime 內建，不需另外列。
+# boto3 is built into the Lambda runtime; no need to list it here.

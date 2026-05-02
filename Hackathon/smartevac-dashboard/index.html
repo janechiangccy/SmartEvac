@@ -1,0 +1,1576 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartEvac Dashboard</title>
+<script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    background: #f3f4f6;
+    color: #111827;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* Setup Overlay */
+  #setup-overlay {
+    position: fixed; inset: 0; background: #f3f4f6;
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .setup-card {
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 40px 48px; width: 100%; max-width: 480px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  }
+  .setup-title { font-size: 1.375rem; font-weight: 700; color: #111827; margin-bottom: 6px; line-height: 1.3; }
+  .setup-subtitle { font-size: 0.875rem; color: #6b7280; margin-bottom: 32px; }
+  .setup-field { margin-bottom: 24px; }
+  .setup-label { display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 8px; letter-spacing: 0.02em; }
+  .setup-select {
+    width: 100%; padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 6px;
+    font-size: 0.9rem; font-family: inherit; color: #111827; background: #ffffff;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; cursor: pointer;
+  }
+  .setup-select:focus { outline: 2px solid #111827; outline-offset: 2px; border-color: #111827; }
+  .setup-radio-group { display: flex; flex-direction: column; gap: 10px; }
+  .setup-radio-label {
+    display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+    padding: 10px 14px; border: 1px solid #e5e7eb; border-radius: 6px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .setup-radio-label:hover { background: #f9fafb; border-color: #d1d5db; }
+  .setup-radio-label input[type="radio"] { margin-top: 2px; accent-color: #111827; flex-shrink: 0; }
+  .setup-radio-label input[type="radio"]:checked + .setup-radio-text .setup-radio-title { color: #111827; font-weight: 600; }
+  .setup-radio-label:has(input:checked) { border-color: #111827; background: #f9fafb; }
+  .setup-radio-title { font-size: 0.875rem; color: #374151; font-weight: 500; }
+  .setup-radio-desc  { font-size: 0.75rem; color: #9ca3af; margin-top: 2px; line-height: 1.4; }
+  .setup-input {
+    width: 100%; padding: 8px 12px; border: 1px solid #e5e7eb; border-radius: 6px;
+    font-size: 0.82rem; font-family: 'Courier New', monospace; color: #111827;
+    background: #ffffff; outline: none;
+  }
+  .setup-input:focus { border-color: #111827; outline: 2px solid #111827; outline-offset: 2px; }
+  .setup-btn {
+    width: 100%; padding: 12px; background: #111827; color: #ffffff; border: none;
+    border-radius: 6px; font-size: 0.9rem; font-weight: 600; font-family: inherit;
+    cursor: pointer; margin-top: 8px; transition: background 0.15s;
+  }
+  .setup-btn:hover { background: #1f2937; }
+
+  /* Header */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 16px 24px; margin-bottom: 24px;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .header-logo {
+    width: 32px; height: 32px; background: #111827; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .header-logo svg { width: 18px; height: 18px; }
+  .header-title { font-size: 1rem; font-weight: 700; color: #111827; line-height: 1.2; }
+  .header-subtitle { font-size: 0.75rem; color: #6b7280; margin-top: 1px; }
+
+  /* Connection badge */
+  .conn-badge {
+    font-size: 0.75rem; font-weight: 500;
+    padding: 4px 12px; border-radius: 9999px; border: 1px solid; white-space: nowrap;
+  }
+  .conn-badge.connecting { background: #f9fafb; border-color: #e5e7eb; color: #6b7280; }
+  .conn-badge.connected  { background: #f0fdf4; border-color: #bbf7d0; color: #16a34a; }
+  .conn-badge.error      { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
+
+  /* Role badge */
+  .role-badge {
+    font-size: 0.75rem; font-weight: 500;
+    padding: 4px 12px; border-radius: 9999px; border: 1px solid; white-space: nowrap;
+  }
+  .role-badge.monitor { background: #f3f4f6; border-color: #e5e7eb; color: #6b7280; }
+  .role-badge.node    { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+
+  /* Section label */
+  .section-label {
+    font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #6b7280; margin-bottom: 10px;
+  }
+
+  /* Scenario controls */
+  .controls-section {
+    background: #ffffff; border: 1px solid #e5e7eb;
+    border-radius: 8px; padding: 16px 24px; margin-bottom: 16px;
+  }
+  .controls-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    padding: 8px 16px; border: 1px solid transparent; border-radius: 6px;
+    font-size: 0.875rem; font-weight: 500; font-family: inherit;
+    cursor: pointer; transition: background 0.15s, opacity 0.15s; line-height: 1.4;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-scenario { background: #111827; color: #ffffff; border-color: #111827; }
+  .btn-scenario:hover:not(:disabled) { background: #1f2937; border-color: #1f2937; }
+  .btn-reset { background: #ffffff; color: #374151; border-color: #e5e7eb; }
+  .btn-reset:hover:not(:disabled) { background: #f9fafb; }
+  .btn-loading { background: #6b7280; color: #ffffff; border-color: #6b7280; }
+  .btn-divider { width: 1px; height: 28px; background: #e5e7eb; flex-shrink: 0; }
+  .btn-move {
+    background: #ffffff; color: #92400e; border-color: #fcd34d;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .btn-move:not(:disabled) { background: #fffbeb; border-color: #f59e0b; color: #b45309; }
+  .btn-move:hover:not(:disabled) { background: #fef3c7; border-color: #d97706; }
+
+  /* Timer bar */
+  .timer-section {
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 12px 24px; margin-bottom: 16px; text-align: center;
+    min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  #timer-bar {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 0.875rem; color: #6b7280; width: 100%; flex-wrap: wrap;
+  }
+  #timer-bar .timer-label { color: #6b7280; font-size: 0.8rem; }
+  #timer-bar .elapsed { color: #d97706; font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+  #timer-bar .done    { color: #16a34a; font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+  #timer-bar .scenario-name { color: #374151; font-size: 0.8rem; font-weight: 500; }
+  .timer-sep { color: #d1d5db; font-size: 0.8rem; }
+
+  /* Geography tabs */
+  .geo-tabs {
+    display: flex; gap: 4px; margin-bottom: 12px;
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 6px; width: fit-content;
+  }
+  .geo-tab {
+    padding: 6px 16px; border-radius: 6px; border: none; background: none;
+    font-size: 0.8rem; font-weight: 500; font-family: inherit;
+    color: #6b7280; cursor: pointer; transition: background 0.15s, color 0.15s;
+  }
+  .geo-tab:hover { background: #f3f4f6; color: #374151; }
+  .geo-tab.active { background: #111827; color: #ffffff; }
+
+  /* Node grid */
+  .nodes-section { margin-bottom: 16px; }
+  .nodes-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+  }
+  @media (max-width: 1024px) { .nodes-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 640px)  { .nodes-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .node-card {
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 16px 12px; text-align: center;
+    transition: border-color 0.3s, background 0.3s, box-shadow 0.2s;
+    position: relative; cursor: pointer;
+  }
+  .node-card:hover { box-shadow: 0 1px 6px rgba(0,0,0,0.07); }
+  .node-card.idle   { background: #ffffff; border-color: #e5e7eb; }
+  .node-card.safe   { background: #f0fdf4; border-color: #bbf7d0; }
+  .node-card.danger { background: #fef2f2; border-color: #fecaca; }
+  .node-card.exit   { background: #eff6ff; border-color: #bfdbfe; }
+  .node-card.updated { animation: card-flash 0.45s ease; }
+  @keyframes card-flash {
+    0%   { box-shadow: 0 0 0 3px rgba(17,24,39,0.25); }
+    100% { box-shadow: none; }
+  }
+
+  .node-id-badge {
+    position: absolute; top: 10px; left: 10px;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em;
+    color: #6b7280; background: #f3f4f6; border: 1px solid #e5e7eb;
+    border-radius: 4px; padding: 1px 6px;
+  }
+  .node-card.safe   .node-id-badge { background: #dcfce7; border-color: #bbf7d0; color: #16a34a; }
+  .node-card.danger .node-id-badge { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+  .node-card.exit   .node-id-badge { background: #dbeafe; border-color: #bfdbfe; color: #2563eb; }
+
+  .node-label { font-size: 0.7rem; color: #9ca3af; margin-top: 22px; margin-bottom: 10px; line-height: 1.4; }
+
+  .node-arrow {
+    width: 32px; height: 32px; margin: 0 auto 10px auto;
+    display: flex; align-items: center; justify-content: center;
+    color: #d1d5db; transition: color 0.3s, filter 0.3s, transform 0.3s;
+  }
+  .node-arrow svg { width: 32px; height: 32px; }
+  .node-card.idle   .node-arrow { color: transparent; }  /* hide arrow when idle */
+  .node-card.safe   .node-arrow { color: #16a34a; filter: drop-shadow(0 0 6px rgba(22,163,74,0.4)); }
+  .node-card.danger .node-arrow { color: #dc2626; filter: drop-shadow(0 0 6px rgba(220,38,38,0.4)); }
+  .node-card.exit   .node-arrow { color: #2563eb; filter: drop-shadow(0 0 6px rgba(37,99,235,0.35)); }
+
+  .node-status {
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 9999px; display: inline-block;
+    margin-bottom: 8px; border: 1px solid transparent;
+  }
+  .status-idle   { background: #f3f4f6; border-color: #e5e7eb; color: #6b7280; }
+  .status-safe   { background: #dcfce7; border-color: #bbf7d0; color: #16a34a; }
+  .status-danger { background: #fee2e2; border-color: #fecaca; color: #dc2626; }
+  .status-exit   { background: #dbeafe; border-color: #bfdbfe; color: #2563eb; }
+
+  .node-text { font-size: 0.7rem; color: #6b7280; line-height: 1.5; min-height: 32px; margin-bottom: 8px; }
+
+  .node-lock {
+    width: 16px; height: 16px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0.35; color: #6b7280;
+  }
+  .node-lock svg { width: 16px; height: 16px; }
+  .node-card.safe   .node-lock,
+  .node-card.exit   .node-lock { opacity: 0.8; color: #16a34a; }
+  .node-card.danger .node-lock { opacity: 0.8; color: #dc2626; }
+
+  /* Per-node mute button */
+  .node-mute-btn {
+    position: absolute; top: 8px; right: 8px;
+    width: 22px; height: 22px;
+    background: none; border: none; cursor: pointer; padding: 0;
+    color: #9ca3af; opacity: 0.6;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2; border-radius: 4px; transition: color 0.15s, opacity 0.15s, background 0.15s;
+  }
+  .node-mute-btn:hover { opacity: 1; background: #f3f4f6; }
+  .node-mute-btn.muted { color: #dc2626; opacity: 1; background: #fee2e2; }
+  .node-mute-btn svg { width: 14px; height: 14px; }
+
+  /* SVG floor plan */
+  #view-map {
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 16px; margin-bottom: 0;
+  }
+  #floor-plan-svg { display: block; margin: 0 auto; max-width: 100%; max-height: 380px; }
+  .fp-node-circle { transition: fill 0.3s, stroke 0.3s; cursor: pointer; }
+  .fp-node-label { font-family: Inter, sans-serif; font-size: 11px; font-weight: 600; pointer-events: none; }
+  .fp-node-sublabel { font-family: Inter, sans-serif; font-size: 9px; pointer-events: none; fill: #6b7280; }
+  .fp-edge { stroke: #d1d5db; stroke-width: 2; }
+  .fp-arrow { fill: currentColor; }
+  @keyframes fp-pulse {
+    0%, 100% { opacity: 0.6; r: 32px; }
+    50% { opacity: 0.2; r: 38px; }
+  }
+  .fp-danger-pulse { animation: fp-pulse 1.2s ease-in-out infinite; }
+
+  /* Spatial layout */
+  #view-spatial { margin-bottom: 0; }
+  .spatial-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, auto);
+    gap: 12px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .spatial-n1 { grid-column: 1; grid-row: 1; }
+  .spatial-n2 { grid-column: 2; grid-row: 1; }
+  .spatial-n3 { grid-column: 3; grid-row: 1; }
+  .spatial-n4 { grid-column: 3; grid-row: 2; }
+  .spatial-n5 { grid-column: 3; grid-row: 3; }
+
+  /* Telemetry panel */
+  .telemetry-section {
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+    padding: 16px 24px; margin-bottom: 16px;
+  }
+  .telemetry-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .telemetry-table th {
+    text-align: left; padding: 4px 10px; color: #9ca3af;
+    font-size: 0.68rem; font-weight: 600; letter-spacing: 0.05em;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .telemetry-table td { padding: 5px 10px; border-bottom: 1px solid #f9fafb; }
+  .tel-node-id { font-weight: 700; color: #374151; font-size: 0.72rem; }
+  .tel-mq2, .tel-mq135, .tel-temp, .tel-status { font-variant-numeric: tabular-nums; color: #6b7280; }
+  .tel-alert { color: #dc2626 !important; background: #fef2f2; border-radius: 3px; padding: 1px 4px; }
+  .tel-warn  { color: #d97706 !important; background: #fffbeb; border-radius: 3px; padding: 1px 4px; }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed; top: 0; right: -420px; width: 420px; height: 100vh;
+    background: #ffffff; border-left: 1px solid #e5e7eb;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+    transition: right 0.3s ease;
+    z-index: 500; overflow-y: auto; padding: 24px;
+  }
+  .sidebar.open { right: 0; }
+  .sidebar-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .sidebar-title { font-size: 0.95rem; font-weight: 700; color: #111827; }
+  .sidebar-close {
+    width: 28px; height: 28px; border: none; background: #f3f4f6;
+    border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: #6b7280; font-size: 1rem; line-height: 1;
+  }
+  .sidebar-close:hover { background: #e5e7eb; }
+  .sidebar-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+  .sidebar-tab {
+    padding: 5px 14px; border-radius: 6px; border: 1px solid #e5e7eb;
+    font-size: 0.78rem; font-weight: 500; font-family: inherit;
+    color: #6b7280; cursor: pointer; background: #ffffff;
+    transition: background 0.15s, color 0.15s;
+  }
+  .sidebar-tab.active { background: #111827; color: #ffffff; border-color: #111827; }
+  .sidebar-content { font-size: 0.8rem; }
+  .sidebar-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+  .sidebar-table th {
+    text-align: left; padding: 4px 8px; color: #9ca3af;
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.05em;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .sidebar-table td { padding: 4px 8px; border-bottom: 1px solid #f9fafb; color: #374151; }
+  .sidebar-empty { color: #9ca3af; font-style: italic; padding: 12px 0; text-align: center; }
+
+  /* MQTT Log */
+  .log-section { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px 24px; }
+  #mqtt-log {
+    height: 180px; overflow-y: auto;
+    font-family: 'Courier New', 'Menlo', monospace;
+    font-size: 0.72rem; line-height: 1.7; color: #374151;
+  }
+  .log-entry { display: flex; gap: 10px; padding: 2px 0; border-bottom: 1px solid #f3f4f6; word-break: break-all; }
+  .log-entry.log-system { color: #9ca3af; }
+  .log-entry .log-time  { color: #9ca3af; flex-shrink: 0; }
+  .log-entry .log-topic { color: #2563eb; flex-shrink: 0; }
+  .log-entry .log-dir   { color: #16a34a; font-weight: 700; flex-shrink: 0; }
+  .log-entry .log-text  { color: #374151; }
+  .log-empty { color: #9ca3af; font-style: italic; padding: 4px 0; }
+
+  /* Sidebar overlay backdrop */
+  .sidebar-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.15); z-index: 499;
+  }
+  .sidebar-backdrop.open { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Setup Overlay -->
+<div id="setup-overlay">
+  <div class="setup-card">
+    <div class="setup-title">SmartEvac 智慧疏散引導系統</div>
+    <div class="setup-subtitle">請選擇您的角色與音訊設定</div>
+    <div class="setup-field">
+      <label class="setup-label" for="role-select">角色選擇</label>
+      <select class="setup-select" id="role-select">
+        <option value="">監控模式（預設）</option>
+        <option value="N1">N1 — 北側出口</option>
+        <option value="N2">N2 — 西北走廊（近實驗室）</option>
+        <option value="N3">N3 — 中央大廳</option>
+        <option value="N4">N4 — 東南走廊</option>
+        <option value="N5">N5 — 南側出口</option>
+      </select>
+    </div>
+    <div class="setup-field">
+      <span class="setup-label">音訊設定</span>
+      <div class="setup-radio-group">
+        <label class="setup-radio-label">
+          <input type="radio" name="audio-mode" value="role" checked>
+          <div class="setup-radio-text">
+            <div class="setup-radio-title">依角色播放（預設）</div>
+            <div class="setup-radio-desc">監控模式只播污染源節點語音；節點模式只播自己的節點語音</div>
+          </div>
+        </label>
+        <label class="setup-radio-label">
+          <input type="radio" name="audio-mode" value="mute">
+          <div class="setup-radio-text">
+            <div class="setup-radio-title">全部靜音</div>
+            <div class="setup-radio-desc">不播放任何語音提示</div>
+          </div>
+        </label>
+      </div>
+    </div>
+    <button class="setup-btn" onclick="enterSystem()">進入系統</button>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">SmartEvac 智慧疏散引導系統</div>
+      <div class="header-subtitle">Campus Hazard Evacuation — AWS IoT Core + Gemini + TTS</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="conn-status" class="conn-badge connecting">Connecting...</span>
+    <span id="role-badge" class="role-badge monitor" style="display:none"></span>
+  </div>
+</header>
+
+<!-- Scenario Controls -->
+<div class="controls-section">
+  <div class="section-label">情境控制</div>
+  <div class="controls-row">
+    <button class="btn btn-scenario" onclick="triggerScenario('chemical_lab_leak')" id="btn-chem">化學實驗室外洩</button>
+    <button class="btn btn-scenario" onclick="triggerScenario('basement_fire')" id="btn-fire">地下室火災</button>
+    <button class="btn btn-scenario" onclick="triggerScenario('gas_leak')" id="btn-gas">瓦斯洩漏</button>
+    <div class="btn-divider"></div>
+    <button class="btn btn-move" id="btn-move" onclick="moveHazard()" disabled>轉移危害源</button>
+    <div class="btn-divider"></div>
+    <button class="btn btn-reset" onclick="resetAll()">重置</button>
+  </div>
+</div>
+
+<!-- Timer -->
+<div class="timer-section">
+  <div id="timer-bar"><span class="timer-label">點擊情境按鈕開始</span></div>
+</div>
+
+<!-- Geography Tabs -->
+<div class="nodes-section">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+    <div class="section-label" style="margin-bottom:0">疏散節點</div>
+    <div class="geo-tabs">
+      <button class="geo-tab active" data-tab="list" onclick="switchTab('list')">列表視圖</button>
+      <button class="geo-tab" data-tab="map" onclick="switchTab('map')">平面圖</button>
+      <button class="geo-tab" data-tab="spatial" onclick="switchTab('spatial')">空間佈局</button>
+    </div>
+  </div>
+
+  <!-- View: List -->
+  <div id="view-list">
+    <div class="nodes-grid">
+
+      <div class="node-card idle" id="card-N1" onclick="openSidebar('N1')">
+        <span class="node-id-badge">N1</span>
+        <button class="node-mute-btn" id="mute-N1" onclick="event.stopPropagation(); toggleNodeMute('N1')" title="切換靜音">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
+        <div class="node-label">北側出口</div>
+        <div class="node-arrow" id="arrow-N1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-N1">閒置</span></div>
+        <div class="node-text" id="text-N1">—</div>
+        <div class="node-lock" id="lock-N1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+      </div>
+
+      <div class="node-card idle" id="card-N2" onclick="openSidebar('N2')">
+        <span class="node-id-badge">N2</span>
+        <button class="node-mute-btn" id="mute-N2" onclick="event.stopPropagation(); toggleNodeMute('N2')" title="切換靜音">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
+        <div class="node-label">西北走廊<br>近實驗室</div>
+        <div class="node-arrow" id="arrow-N2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-N2">閒置</span></div>
+        <div class="node-text" id="text-N2">—</div>
+        <div class="node-lock" id="lock-N2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+      </div>
+
+      <div class="node-card idle" id="card-N3" onclick="openSidebar('N3')">
+        <span class="node-id-badge">N3</span>
+        <button class="node-mute-btn" id="mute-N3" onclick="event.stopPropagation(); toggleNodeMute('N3')" title="切換靜音">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
+        <div class="node-label">中央大廳</div>
+        <div class="node-arrow" id="arrow-N3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-N3">閒置</span></div>
+        <div class="node-text" id="text-N3">—</div>
+        <div class="node-lock" id="lock-N3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+      </div>
+
+      <div class="node-card idle" id="card-N4" onclick="openSidebar('N4')">
+        <span class="node-id-badge">N4</span>
+        <button class="node-mute-btn" id="mute-N4" onclick="event.stopPropagation(); toggleNodeMute('N4')" title="切換靜音">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
+        <div class="node-label">東南走廊</div>
+        <div class="node-arrow" id="arrow-N4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-N4">閒置</span></div>
+        <div class="node-text" id="text-N4">—</div>
+        <div class="node-lock" id="lock-N4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+      </div>
+
+      <div class="node-card idle" id="card-N5" onclick="openSidebar('N5')">
+        <span class="node-id-badge">N5</span>
+        <button class="node-mute-btn" id="mute-N5" onclick="event.stopPropagation(); toggleNodeMute('N5')" title="切換靜音">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </button>
+        <div class="node-label">南側出口</div>
+        <div class="node-arrow" id="arrow-N5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-N5">閒置</span></div>
+        <div class="node-text" id="text-N5">—</div>
+        <div class="node-lock" id="lock-N5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+      </div>
+
+    </div>
+  </div><!-- /view-list -->
+
+  <!-- View: SVG Floor Plan -->
+  <div id="view-map" style="display:none">
+    <svg id="floor-plan-svg" viewBox="0 0 680 500" style="display:block;margin:0 auto;max-width:100%">
+      <defs>
+        <marker id="arr-safe" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <polygon points="0 0, 10 4, 0 8" fill="#16a34a"/>
+        </marker>
+        <marker id="arr-exit" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <polygon points="0 0, 10 4, 0 8" fill="#2563eb"/>
+        </marker>
+        <marker id="arr-idle" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <polygon points="0 0, 10 4, 0 8" fill="#d1d5db"/>
+        </marker>
+      </defs>
+
+      <!-- Base edges (gray, always visible) -->
+      <line x1="155" y1="120" x2="245" y2="120" stroke="#e5e7eb" stroke-width="3"/>
+      <line x1="355" y1="120" x2="445" y2="120" stroke="#e5e7eb" stroke-width="3"/>
+      <line x1="500" y1="175" x2="500" y2="225" stroke="#e5e7eb" stroke-width="3"/>
+      <line x1="500" y1="335" x2="500" y2="385" stroke="#e5e7eb" stroke-width="3"/>
+
+      <!-- Directed edge arrows (hidden by default) -->
+      <line id="fp-edge-N1-N2" x1="158" y1="116" x2="242" y2="116" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N2-N1" x1="242" y1="124" x2="158" y2="124" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N2-N3" x1="358" y1="116" x2="442" y2="116" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N3-N2" x1="442" y1="124" x2="358" y2="124" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N3-N4" x1="496" y1="178" x2="496" y2="222" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N4-N3" x1="504" y1="222" x2="504" y2="178" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N4-N5" x1="496" y1="338" x2="496" y2="382" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N5-N4" x1="504" y1="382" x2="504" y2="338" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+
+      <!-- Danger pulse rings -->
+      <circle id="fp-pulse-N1" cx="100" cy="120" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N2" cx="300" cy="120" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N3" cx="500" cy="120" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N4" cx="500" cy="280" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N5" cx="500" cy="420" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+
+      <!-- Node circles (r=55, diameter=110px) -->
+      <circle id="fp-N1" cx="100" cy="120" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N1')" style="cursor:pointer"/>
+      <circle id="fp-N2" cx="300" cy="120" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N2')" style="cursor:pointer"/>
+      <circle id="fp-N3" cx="500" cy="120" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N3')" style="cursor:pointer"/>
+      <circle id="fp-N4" cx="500" cy="280" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N4')" style="cursor:pointer"/>
+      <circle id="fp-N5" cx="500" cy="420" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N5')" style="cursor:pointer"/>
+
+      <!-- Node labels -->
+      <text id="fp-label-N1" x="100" y="113" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N1</text>
+      <text id="fp-sub-N1"   x="100" y="132" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">北側出口</text>
+      <text id="fp-label-N2" x="300" y="113" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N2</text>
+      <text id="fp-sub-N2"   x="300" y="132" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">西北走廊</text>
+      <text id="fp-label-N3" x="500" y="113" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N3</text>
+      <text id="fp-sub-N3"   x="500" y="132" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">中央大廳</text>
+      <text id="fp-label-N4" x="500" y="273" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N4</text>
+      <text id="fp-sub-N4"   x="500" y="292" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">東南走廊</text>
+      <text id="fp-label-N5" x="500" y="413" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N5</text>
+      <text id="fp-sub-N5"   x="500" y="432" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">南側出口</text>
+
+      <!-- Arrow groups (centered on each node) -->
+      <g id="fp-arrow-N1" transform="translate(100,120)"></g>
+      <g id="fp-arrow-N2" transform="translate(300,120)"></g>
+      <g id="fp-arrow-N3" transform="translate(500,120)"></g>
+      <g id="fp-arrow-N4" transform="translate(500,280)"></g>
+      <g id="fp-arrow-N5" transform="translate(500,420)"></g>
+    </svg>
+  </div>
+  <!-- View: Spatial Layout -->
+  <div id="view-spatial" style="display:none">
+    <div class="spatial-grid">
+      <div class="node-card idle spatial-n1" id="card-sp-N1" onclick="openSidebar('N1')">
+        <span class="node-id-badge">N1</span>
+        <div class="node-label">北側出口</div>
+        <div class="node-arrow" id="arrow-sp-N1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-sp-N1">閒置</span></div>
+      </div>
+      <div class="node-card idle spatial-n2" id="card-sp-N2" onclick="openSidebar('N2')">
+        <span class="node-id-badge">N2</span>
+        <div class="node-label">西北走廊</div>
+        <div class="node-arrow" id="arrow-sp-N2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-sp-N2">閒置</span></div>
+      </div>
+      <div class="node-card idle spatial-n3" id="card-sp-N3" onclick="openSidebar('N3')">
+        <span class="node-id-badge">N3</span>
+        <div class="node-label">中央大廳</div>
+        <div class="node-arrow" id="arrow-sp-N3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-sp-N3">閒置</span></div>
+      </div>
+      <div class="node-card idle spatial-n4" id="card-sp-N4" onclick="openSidebar('N4')">
+        <span class="node-id-badge">N4</span>
+        <div class="node-label">東南走廊</div>
+        <div class="node-arrow" id="arrow-sp-N4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-sp-N4">閒置</span></div>
+      </div>
+      <div class="node-card idle spatial-n5" id="card-sp-N5" onclick="openSidebar('N5')">
+        <span class="node-id-badge">N5</span>
+        <div class="node-label">南側出口</div>
+        <div class="node-arrow" id="arrow-sp-N5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+        <div><span class="node-status status-idle" id="status-sp-N5">閒置</span></div>
+      </div>
+    </div>
+  </div><!-- /view-spatial -->
+
+</div><!-- /nodes-section -->
+
+<!-- Telemetry Panel -->
+<div class="telemetry-section">
+  <div class="section-label">感測器即時讀值</div>
+  <table class="telemetry-table">
+    <thead>
+      <tr>
+        <th>節點</th>
+        <th>MQ-2</th>
+        <th>MQ-135</th>
+        <th>溫度</th>
+        <th>狀態</th>
+        <th>更新時間</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr id="telemetry-row-N1">
+        <td class="tel-node-id">N1 北側出口</td>
+        <td class="tel-mq2">—</td>
+        <td class="tel-mq135">—</td>
+        <td class="tel-temp">—</td>
+        <td class="tel-status">—</td>
+        <td class="tel-ts" style="color:#9ca3af;font-size:0.68rem">—</td>
+      </tr>
+      <tr id="telemetry-row-N2">
+        <td class="tel-node-id">N2 西北走廊</td>
+        <td class="tel-mq2">—</td>
+        <td class="tel-mq135">—</td>
+        <td class="tel-temp">—</td>
+        <td class="tel-status">—</td>
+        <td class="tel-ts" style="color:#9ca3af;font-size:0.68rem">—</td>
+      </tr>
+      <tr id="telemetry-row-N3">
+        <td class="tel-node-id">N3 中央大廳</td>
+        <td class="tel-mq2">—</td>
+        <td class="tel-mq135">—</td>
+        <td class="tel-temp">—</td>
+        <td class="tel-status">—</td>
+        <td class="tel-ts" style="color:#9ca3af;font-size:0.68rem">—</td>
+      </tr>
+      <tr id="telemetry-row-N4">
+        <td class="tel-node-id">N4 東南走廊</td>
+        <td class="tel-mq2">—</td>
+        <td class="tel-mq135">—</td>
+        <td class="tel-temp">—</td>
+        <td class="tel-status">—</td>
+        <td class="tel-ts" style="color:#9ca3af;font-size:0.68rem">—</td>
+      </tr>
+      <tr id="telemetry-row-N5">
+        <td class="tel-node-id">N5 南側出口</td>
+        <td class="tel-mq2">—</td>
+        <td class="tel-mq135">—</td>
+        <td class="tel-temp">—</td>
+        <td class="tel-status">—</td>
+        <td class="tel-ts" style="color:#9ca3af;font-size:0.68rem">—</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- MQTT Log -->
+<div class="log-section">
+  <div class="section-label">即時 MQTT 訊息 — smartevac/cmd/+</div>
+  <div id="mqtt-log">
+    <div class="log-empty">等待訊息中...</div>
+  </div>
+</div>
+
+<!-- Sidebar backdrop -->
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+<!-- Hidden audio elements (shared across all tabs) -->
+<audio id="audio-N1" preload="none" style="display:none"></audio>
+<audio id="audio-N2" preload="none" style="display:none"></audio>
+<audio id="audio-N3" preload="none" style="display:none"></audio>
+<audio id="audio-N4" preload="none" style="display:none"></audio>
+<audio id="audio-N5" preload="none" style="display:none"></audio>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title" id="sidebar-title">節點詳情</div>
+    <button class="sidebar-close" onclick="closeSidebar()">✕</button>
+  </div>
+  <div class="sidebar-tabs">
+    <button class="sidebar-tab active" id="stab-node" onclick="switchSidebarTab('node')">此節點</button>
+    <button class="sidebar-tab" id="stab-all" onclick="switchSidebarTab('all')">所有節點</button>
+  </div>
+  <div class="sidebar-content" id="sidebar-content">
+    <div class="sidebar-empty">點擊節點卡片以查看詳情</div>
+  </div>
+</div>
+<!-- Scripts -->
+<!-- config.js only loaded on localhost (not needed on S3) -->
+<script>
+// Fallback empty config — will be overridden by setup screen credentials input
+if (typeof SMARTEVAC_CONFIG === 'undefined') { window.SMARTEVAC_CONFIG = {}; }
+</script>
+<script>
+// Try to load config.js (localhost only), ignore 404/403 on S3
+(function() {
+  var s = document.createElement('script');
+  s.src = 'config.js';
+  s.onerror = function() {}; // silently ignore if not found
+  document.head.appendChild(s);
+})();
+</script>
+<script>
+// ── Setup screen state ──────────────────────────────────────────────────────
+var selectedRole = '';   // '' = monitor, 'N1'..'N5' = node
+var audioMode    = 'role'; // 'role' | 'mute'
+
+var NODE_LABELS = {
+  N1: '北側出口', N2: '西北走廊', N3: '中央大廳', N4: '東南走廊', N5: '南側出口'
+};
+
+function enterSystem() {
+  // Use SMARTEVAC_CONFIG from config.js (loaded via ngrok from host machine)
+  selectedRole = document.getElementById('role-select').value;
+  var radios = document.querySelectorAll('input[name="audio-mode"]');
+  radios.forEach(function(r) { if (r.checked) audioMode = r.value; });
+
+  var badge = document.getElementById('role-badge');
+  badge.style.display = '';
+  if (selectedRole === '') {
+    badge.textContent = '監控模式';
+    badge.className = 'role-badge monitor';
+  } else {
+    badge.textContent = selectedRole + ' ' + (NODE_LABELS[selectedRole] || '');
+    badge.className = 'role-badge node';
+  }
+
+  var overlay = document.getElementById('setup-overlay');
+  overlay.style.opacity = '0';
+  overlay.style.transition = 'opacity 0.3s ease';
+  setTimeout(function() {
+    overlay.style.display = 'none';
+    connectMqtt();
+  }, 300);
+}
+
+// ── Per-node mute ────────────────────────────────────────────────────────────
+var nodeMuteState = { N1: false, N2: false, N3: false, N4: false, N5: false };
+
+var SPEAKER_ON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+var SPEAKER_OFF_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+
+function toggleNodeMute(nodeId) {
+  nodeMuteState[nodeId] = !nodeMuteState[nodeId];
+  updateMuteIcon(nodeId);
+}
+
+function updateMuteIcon(nodeId) {
+  var btn = document.getElementById('mute-' + nodeId);
+  if (!btn) return;
+  var muted = nodeMuteState[nodeId];
+  btn.innerHTML = muted ? SPEAKER_OFF_SVG : SPEAKER_ON_SVG;
+  btn.classList.toggle('muted', muted);
+  btn.title = muted ? '取消靜音' : '切換靜音';
+}
+
+// ── Audio filtering ─────────────────────────────────────────────────────────
+function shouldPlayAudio(nodeId, isContaminated) {
+  if (audioMode === 'mute') return false;
+  if (nodeMuteState[nodeId]) return false;
+  if (selectedRole === '') {
+    return isContaminated;
+  } else {
+    return nodeId === selectedRole;
+  }
+}
+
+// ── Typewriter effect ────────────────────────────────────────────────────────
+function typewriterEffect(element, text, durationMs) {
+  element.textContent = '';
+  if (!text) return;
+  var chars = text.split('');
+  var interval = durationMs / chars.length;
+  var i = 0;
+  var timer = setInterval(function() {
+    element.textContent += chars[i];
+    i++;
+    if (i >= chars.length) clearInterval(timer);
+  }, interval);
+}
+
+// ── SVG helpers ──────────────────────────────────────────────────────────────
+var ARROW_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>';
+var WARN_SVG  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+var LOCK_CLOSED_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+var LOCK_OPEN_SVG   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+
+function setArrowSvg(arrowEl, direction) {
+  // Arrow SVG points UP by default (↑)
+  // rotate(90deg)  = clockwise 90° = points RIGHT (→)
+  // rotate(180deg) = points DOWN (↓)
+  // rotate(270deg) = clockwise 270° = points LEFT (←)
+  var rotations = { '\u2193': 180, '\u2190': 270, '\u2192': 90, '\u2191': 0 };
+  var rotation = rotations[direction];
+  if (direction === '\uD83D\uDED1' || rotation === undefined) {
+    arrowEl.innerHTML = WARN_SVG;
+    arrowEl.style.transform = '';
+  } else {
+    arrowEl.innerHTML = ARROW_SVG;
+    arrowEl.style.transform = 'rotate(' + rotation + 'deg)';
+  }
+}
+
+// ── SigV4 signing ────────────────────────────────────────────────────────────
+function sign(key, msg) {
+  var enc = new TextEncoder();
+  return crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    .then(function(k) { return crypto.subtle.sign('HMAC', k, enc.encode(msg)); });
+}
+
+async function getSignatureKey(key, dateStamp, region, service) {
+  var enc = new TextEncoder();
+  var kDate    = await sign(enc.encode('AWS4' + key), dateStamp);
+  var kRegion  = await sign(kDate, region);
+  var kService = await sign(kRegion, service);
+  var kSigning = await sign(kService, 'aws4_request');
+  return kSigning;
+}
+
+function buf2hex(buf) {
+  return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+}
+
+async function buildIotWssUrl(cfg) {
+  var now = new Date();
+  var amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  var dateStamp = amzDate.slice(0, 8);
+  var service = 'iotdevicegateway';
+  var region = cfg.region;
+  var host = cfg.iotEndpoint;
+
+  var credScope = dateStamp + '/' + region + '/' + service + '/aws4_request';
+  var queryParams = [
+    'X-Amz-Algorithm=AWS4-HMAC-SHA256',
+    'X-Amz-Credential=' + encodeURIComponent(cfg.accessKeyId + '/' + credScope),
+    'X-Amz-Date=' + amzDate,
+    'X-Amz-SignedHeaders=host',
+  ].join('&');
+
+  var canonicalRequest = [
+    'GET', '/mqtt', queryParams,
+    'host:' + host + '\n',
+    'host',
+    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  ].join('\n');
+
+  var enc = new TextEncoder();
+  var hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(canonicalRequest));
+  var canonicalHash = buf2hex(hashBuf);
+
+  var stringToSign = ['AWS4-HMAC-SHA256', amzDate, credScope, canonicalHash].join('\n');
+
+  var sigKey = await getSignatureKey(cfg.secretAccessKey, dateStamp, region, service);
+  var sigBuf = await sign(sigKey, stringToSign);
+  var signature = buf2hex(sigBuf);
+
+  var url = 'wss://' + host + '/mqtt?' + queryParams + '&X-Amz-Signature=' + signature;
+  if (cfg.sessionToken) {
+    url += '&X-Amz-Security-Token=' + encodeURIComponent(cfg.sessionToken);
+  }
+  return url;
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+var NODES = ['N1', 'N2', 'N3', 'N4', 'N5'];
+var mqttClient = null;
+var timerStart = null;
+var timerInterval = null;
+var timerStopped = false;
+var logCount = 0;
+var lastRenderedRunId = null;
+var iotReceivedNodes = new Set();
+var iotCurrentRunId = null;
+
+// New state for features
+var currentScenario = null;
+var nodeReadings = {};
+var nodeHistory = {};  // {nodeId: [{...reading, ts}]} last 20 per node
+var activeTab = 'list';
+var sidebarNodeId = null;
+var sidebarTab = 'node';
+
+var SCENARIO_NAMES = {
+  'chemical_lab_leak': '化學實驗室外洩',
+  'basement_fire': '地下室火災',
+  'gas_leak': '瓦斯洩漏',
+  'chemical_lab_leak_phase2': '化學實驗室外洩 Phase 2',
+  'basement_fire_phase2': '地下室火災 Phase 2',
+  'gas_leak_phase2': '瓦斯洩漏 Phase 2'
+};
+
+var PHASE2_MAP = {
+  'chemical_lab_leak': 'chemical_lab_leak_phase2',
+  'basement_fire': 'basement_fire_phase2',
+  'gas_leak': 'gas_leak_phase2'
+};
+
+// ── MQTT connect ─────────────────────────────────────────────────────────────
+async function connectMqtt() {
+  setConnStatus('connecting', 'Connecting...');
+  try {
+    var url = await buildIotWssUrl(SMARTEVAC_CONFIG);
+    mqttClient = mqtt.connect(url, {
+      clientId: 'smartevac-dashboard-' + Math.random().toString(16).slice(2, 8),
+      clean: true,
+      reconnectPeriod: 5000,
+      connectTimeout: 15000,
+    });
+
+    mqttClient.on('connect', function() {
+      setConnStatus('connected', 'Connected to IoT Core');
+      // Subscribe to cmd topics (routing results)
+      mqttClient.subscribe(SMARTEVAC_CONFIG.cmdTopicPrefix + '/+', { qos: 1 }, function(err) {
+        if (err) setConnStatus('error', 'Subscribe failed: ' + err.message);
+      });
+      // Subscribe to telemetry topics (raw sensor values for the panel)
+      mqttClient.subscribe('smartevac/telemetry/+', { qos: 0 }, function() {});
+    });
+
+    mqttClient.on('message', function(topic, payload) {
+      try {
+        var data = JSON.parse(payload.toString());
+
+        // Handle telemetry messages (raw sensor values)
+        if (topic.startsWith('smartevac/telemetry/')) {
+          var telNodeId = topic.split('/').pop();
+          if (data.mq2 !== undefined || data.mq135 !== undefined) {
+            // Merge sensor values into nodeReadings, preserve routing state
+            if (!nodeReadings[telNodeId]) nodeReadings[telNodeId] = {};
+            if (data.mq2    !== undefined) nodeReadings[telNodeId].mq2    = data.mq2;
+            if (data.mq135  !== undefined) nodeReadings[telNodeId].mq135  = data.mq135;
+            if (data.temp_c !== undefined) nodeReadings[telNodeId].temp_c = data.temp_c;
+            nodeReadings[telNodeId].ts = Date.now();
+            updateTelemetryDisplay();
+          }
+          return;
+        }
+
+        // Handle cmd messages (routing results)
+        var cmd = data;
+        var nodeId = topic.split('/').pop();
+        var runId = cmd.run_id || null;
+
+        if (runId && runId === lastRenderedRunId) return;
+
+        if (runId !== iotCurrentRunId) {
+          iotCurrentRunId = runId;
+          iotReceivedNodes = new Set();
+        }
+        iotReceivedNodes.add(nodeId);
+
+        renderNode(nodeId, cmd);
+        appendLog(topic, cmd);
+
+        if (iotReceivedNodes.size >= NODES.length) {
+          lastRenderedRunId = runId;
+          stopTimer();
+          stopPolling();
+        }
+      } catch (e) {
+        appendLog(topic, { raw: payload.toString() });
+      }
+    });
+
+    mqttClient.on('error', function(err) { setConnStatus('error', err.message); console.error('MQTT error:', err); });
+    mqttClient.on('reconnect', function() { setConnStatus('connecting', 'Reconnecting...'); });
+    mqttClient.on('offline', function() { setConnStatus('error', 'Offline — check credentials & IoT endpoint'); console.warn('MQTT offline'); });
+
+  } catch (e) {
+    setConnStatus('error', 'Sign error: ' + e.message);
+  }
+}
+
+// ── renderNode ───────────────────────────────────────────────────────────────
+function renderNode(nodeId, cmd) {
+  var card   = document.getElementById('card-'   + nodeId);
+  var arrow  = document.getElementById('arrow-'  + nodeId);
+  var status = document.getElementById('status-' + nodeId);
+  var text   = document.getElementById('text-'   + nodeId);
+  var lock   = document.getElementById('lock-'   + nodeId);
+  var audio  = document.getElementById('audio-'  + nodeId);
+  if (!card) return;
+
+  var dir = cmd.direction || '?';
+  var isContaminated = cmd.is_contaminated;
+  var isExit = cmd.is_exit;
+
+  // Set arrow SVG
+  setArrowSvg(arrow, dir);
+
+  card.classList.remove('idle', 'safe', 'danger', 'exit', 'updated');
+  void card.offsetWidth;
+  if (isContaminated) {
+    card.classList.add('danger', 'updated');
+    status.className = 'node-status status-danger';
+    status.textContent = '危險';
+  } else if (isExit) {
+    card.classList.add('exit', 'updated');
+    status.className = 'node-status status-exit';
+    status.textContent = '出口';
+  } else {
+    card.classList.add('safe', 'updated');
+    status.className = 'node-status status-safe';
+    status.textContent = '疏散';
+  }
+
+  // Unlock icon
+  lock.innerHTML = LOCK_OPEN_SVG;
+
+  // Audio + typewriter
+  var durationMs = 3000;
+  if (cmd.mp3_url && shouldPlayAudio(nodeId, isContaminated)) {
+    audio.src = cmd.mp3_url;
+    audio.play().catch(function() {});
+    audio.addEventListener('loadedmetadata', function onMeta() {
+      audio.removeEventListener('loadedmetadata', onMeta);
+      var dur = audio.duration;
+      if (dur && isFinite(dur)) {
+        typewriterEffect(text, cmd.text || '—', dur * 1000);
+      } else {
+        typewriterEffect(text, cmd.text || '—', durationMs);
+      }
+    });
+    setTimeout(function() {
+      if (text.textContent === '') typewriterEffect(text, cmd.text || '—', durationMs);
+    }, 500);
+  } else {
+    typewriterEffect(text, cmd.text || '—', durationMs);
+  }
+
+  // Update spatial view mirror
+  updateSpatialCard(nodeId, isContaminated, isExit, dir);
+
+  // Update SVG floor plan
+  updateFloorPlanNode(nodeId, isContaminated, isExit, dir);
+  updateFloorPlanEdges(nodeId, cmd.next_hop || null);
+
+  // Update telemetry readings from cmd payload — preserve existing sensor values
+  var existing = nodeReadings[nodeId] || {};
+  nodeReadings[nodeId] = {
+    is_contaminated: isContaminated,
+    is_exit: isExit,
+    direction: dir,
+    ts: Date.now(),
+    // Preserve raw sensor values if already set from telemetry subscription
+    mq2:    existing.mq2    !== undefined ? existing.mq2    : undefined,
+    mq135:  existing.mq135  !== undefined ? existing.mq135  : undefined,
+    temp_c: existing.temp_c !== undefined ? existing.temp_c : undefined,
+  };
+  // Keep history (last 20)
+  if (!nodeHistory[nodeId]) nodeHistory[nodeId] = [];
+  nodeHistory[nodeId].unshift({
+    is_contaminated: isContaminated,
+    is_exit: isExit,
+    direction: dir,
+    ts: Date.now()
+  });
+  if (nodeHistory[nodeId].length > 20) nodeHistory[nodeId].pop();
+
+  updateTelemetryDisplay();
+
+  // Refresh sidebar if open for this node
+  if (sidebarNodeId) refreshSidebarContent();
+}
+
+// ── Spatial view mirror ───────────────────────────────────────────────────────
+function updateSpatialCard(nodeId, isContaminated, isExit, dir) {
+  var card   = document.getElementById('card-sp-' + nodeId);
+  var arrow  = document.getElementById('arrow-sp-' + nodeId);
+  var status = document.getElementById('status-sp-' + nodeId);
+  if (!card) return;
+
+  setArrowSvg(arrow, dir);
+  card.classList.remove('idle', 'safe', 'danger', 'exit', 'updated');
+  void card.offsetWidth;
+  if (isContaminated) {
+    card.classList.add('danger', 'updated');
+    status.className = 'node-status status-danger';
+    status.textContent = '危險';
+  } else if (isExit) {
+    card.classList.add('exit', 'updated');
+    status.className = 'node-status status-exit';
+    status.textContent = '出口';
+  } else {
+    card.classList.add('safe', 'updated');
+    status.className = 'node-status status-safe';
+    status.textContent = '疏散';
+  }
+}
+
+// ── SVG Floor Plan edge update ────────────────────────────────────────────────
+function updateFloorPlanEdges(nodeId, nextHop) {
+  // Hide all directed edges from this node
+  var allEdges = ['N1','N2','N3','N4','N5'];
+  allEdges.forEach(function(target) {
+    var e = document.getElementById('fp-edge-' + nodeId + '-' + target);
+    if (e) e.style.display = 'none';
+  });
+  // Show edge toward next_hop
+  if (nextHop) {
+    var activeEdge = document.getElementById('fp-edge-' + nodeId + '-' + nextHop);
+    if (activeEdge) activeEdge.style.display = '';
+  }
+}
+
+// ── SVG Floor Plan update ─────────────────────────────────────────────────────
+var FP_COLORS = {
+  idle:   { fill: '#f3f4f6', stroke: '#e5e7eb', text: '#374151' },
+  safe:   { fill: '#dcfce7', stroke: '#86efac', text: '#16a34a' },
+  danger: { fill: '#fee2e2', stroke: '#fca5a5', text: '#dc2626' },
+  exit:   { fill: '#dbeafe', stroke: '#93c5fd', text: '#2563eb' }
+};
+
+function updateFloorPlanNode(nodeId, isContaminated, isExit, dir) {
+  var circle = document.getElementById('fp-' + nodeId);
+  var label  = document.getElementById('fp-label-' + nodeId);
+  var pulse  = document.getElementById('fp-pulse-' + nodeId);
+  var arrowG = document.getElementById('fp-arrow-' + nodeId);
+  if (!circle) return;
+
+  var state = isContaminated ? 'danger' : (isExit ? 'exit' : 'safe');
+  var c = FP_COLORS[state];
+  circle.setAttribute('fill', c.fill);
+  circle.setAttribute('stroke', c.stroke);
+  label.setAttribute('fill', c.text);
+
+  // Pulse ring for danger
+  if (isContaminated) {
+    pulse.setAttribute('opacity', '0.6');
+    pulse.style.animationPlayState = 'running';
+  } else {
+    pulse.setAttribute('opacity', '0');
+    pulse.style.animationPlayState = 'paused';
+  }
+
+  // Direction arrow inside circle
+  var rotations = { '\u2193': 180, '\u2190': 90, '\u2192': 270, '\u2191': 0 };
+  var rotation = rotations[dir];
+  if (dir === '\uD83D\uDED1' || rotation === undefined) {
+    arrowG.innerHTML = '<text y="5" text-anchor="middle" font-size="14" fill="' + c.text + '">!</text>';
+  } else {
+    var rad = (rotation - 90) * Math.PI / 180;
+    var ax = Math.round(Math.cos(rad) * 10);
+    var ay = Math.round(Math.sin(rad) * 10);
+    arrowG.innerHTML = '<line x1="0" y1="0" x2="' + ax + '" y2="' + ay + '" stroke="' + c.text + '" stroke-width="2.5" stroke-linecap="round"/>' +
+      '<polygon points="' + ax + ',' + ay + ' ' + (ax - 4) + ',' + (ay - 6) + ' ' + (ax + 4) + ',' + (ay - 6) + '" fill="' + c.text + '" transform="rotate(' + rotation + ')"/>';
+  }
+}
+
+// ── Telemetry display ─────────────────────────────────────────────────────────
+function updateTelemetryDisplay() {
+  NODES.forEach(function(nodeId) {
+    var reading = nodeReadings[nodeId];
+    var row = document.getElementById('telemetry-row-' + nodeId);
+    if (!row) return;
+    if (!reading) {
+      row.querySelector('.tel-mq2').textContent = '—';
+      row.querySelector('.tel-mq135').textContent = '—';
+      row.querySelector('.tel-temp').textContent = '—';
+      row.querySelector('.tel-status').textContent = '—';
+      row.querySelector('.tel-ts').textContent = '—';
+      return;
+    }
+    var mq2El   = row.querySelector('.tel-mq2');
+    var mq135El = row.querySelector('.tel-mq135');
+    var tempEl  = row.querySelector('.tel-temp');
+    var statusEl = row.querySelector('.tel-status');
+    var tsEl    = row.querySelector('.tel-ts');
+
+    mq2El.textContent   = reading.mq2   !== undefined ? reading.mq2.toFixed(2)   : '—';
+    mq135El.textContent = reading.mq135 !== undefined ? reading.mq135.toFixed(2) : '—';
+    tempEl.textContent  = reading.temp_c !== undefined ? reading.temp_c.toFixed(1) + '°C' : '—';
+
+    mq2El.className   = 'tel-mq2 '   + (reading.mq2   > 0.5  ? 'tel-alert' : reading.mq2   > 0.35 ? 'tel-warn' : '');
+    mq135El.className = 'tel-mq135 ' + (reading.mq135 > 0.7  ? 'tel-alert' : reading.mq135 > 0.49 ? 'tel-warn' : '');
+    tempEl.className  = 'tel-temp '  + (reading.temp_c > 35  ? 'tel-alert' : reading.temp_c > 28  ? 'tel-warn' : '');
+
+    statusEl.textContent = reading.is_contaminated ? '⚠ 污染' : (reading.is_exit ? '出口' : '正常');
+    statusEl.className = 'tel-status ' + (reading.is_contaminated ? 'tel-alert' : '');
+
+    if (reading.ts) {
+      var d = new Date(reading.ts);
+      tsEl.textContent = d.toLocaleTimeString('zh-TW', { hour12: false });
+    }
+  });
+}
+
+// ── Geography tab switching ───────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.geo-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  document.getElementById('view-list').style.display    = tab === 'list'    ? '' : 'none';
+  document.getElementById('view-map').style.display     = tab === 'map'     ? '' : 'none';
+  document.getElementById('view-spatial').style.display = tab === 'spatial' ? '' : 'none';
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function openSidebar(nodeId) {
+  sidebarNodeId = nodeId;
+  sidebarTab = 'node';
+  document.getElementById('stab-node').classList.add('active');
+  document.getElementById('stab-all').classList.remove('active');
+  document.getElementById('sidebar-title').textContent = nodeId + ' ' + (NODE_LABELS[nodeId] || '') + ' — 感測器歷史';
+  refreshSidebarContent();
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-backdrop').classList.add('open');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('open');
+  sidebarNodeId = null;
+}
+
+function switchSidebarTab(tab) {
+  sidebarTab = tab;
+  document.getElementById('stab-node').classList.toggle('active', tab === 'node');
+  document.getElementById('stab-all').classList.toggle('active', tab === 'all');
+  refreshSidebarContent();
+}
+
+function refreshSidebarContent() {
+  var content = document.getElementById('sidebar-content');
+  if (sidebarTab === 'node') {
+    var history = nodeHistory[sidebarNodeId] || [];
+    if (history.length === 0) {
+      content.innerHTML = '<div class="sidebar-empty">尚無資料</div>';
+      return;
+    }
+    var rows = history.map(function(r) {
+      var d = new Date(r.ts);
+      var time = d.toLocaleTimeString('zh-TW', { hour12: false });
+      var stateText = r.is_contaminated ? '⚠ 污染' : (r.is_exit ? '出口' : '正常');
+      var stateClass = r.is_contaminated ? 'tel-alert' : '';
+      return '<tr><td>' + time + '</td><td>' + r.direction + '</td><td class="' + stateClass + '">' + stateText + '</td></tr>';
+    }).join('');
+    content.innerHTML = '<table class="sidebar-table"><thead><tr><th>時間</th><th>方向</th><th>狀態</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  } else {
+    // All nodes comparison
+    var rows2 = NODES.map(function(nid) {
+      var r = nodeReadings[nid];
+      if (!r) return '<tr><td class="tel-node-id">' + nid + '</td><td colspan="3" style="color:#9ca3af">—</td></tr>';
+      var stateText = r.is_contaminated ? '⚠ 污染' : (r.is_exit ? '出口' : '正常');
+      var stateClass = r.is_contaminated ? 'tel-alert' : '';
+      var d = new Date(r.ts);
+      var time = d.toLocaleTimeString('zh-TW', { hour12: false });
+      return '<tr><td class="tel-node-id">' + nid + ' ' + (NODE_LABELS[nid] || '') + '</td><td>' + r.direction + '</td><td class="' + stateClass + '">' + stateText + '</td><td style="color:#9ca3af;font-size:0.68rem">' + time + '</td></tr>';
+    }).join('');
+    content.innerHTML = '<table class="sidebar-table"><thead><tr><th>節點</th><th>方向</th><th>狀態</th><th>時間</th></tr></thead><tbody>' + rows2 + '</tbody></table>';
+  }
+}
+
+// ── triggerScenario ──────────────────────────────────────────────────────────
+function triggerScenario(name) {
+  currentScenario = name;
+  var scenarioNames = { chemical_lab_leak: 'btn-chem', basement_fire: 'btn-fire', gas_leak: 'btn-gas' };
+
+  // Also disable phase2 scenario buttons if they exist
+  Object.values(scenarioNames).forEach(function(id) {
+    var b = document.getElementById(id);
+    b.disabled = true;
+    b.classList.add('btn-loading');
+    b.classList.remove('btn-scenario');
+  });
+
+  // Disable move hazard during loading
+  var moveBtn = document.getElementById('btn-move');
+  moveBtn.disabled = true;
+
+  startTimer();
+  startPolling();
+
+  fetch(SMARTEVAC_CONFIG.scenarioApiUrl + name, { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) { appendSystemLog('ScenarioTrigger: ' + data.published + '/' + data.events_total + ' published, ' + data.hazard_triggers + ' hazard trigger(s)'); })
+    .catch(function(e) { appendSystemLog('ScenarioTrigger: triggered (' + (e.message === 'Failed to fetch' ? 'Lambda running in background' : e.message) + ')'); });
+
+  setTimeout(function() {
+    Object.values(scenarioNames).forEach(function(id) {
+      var b = document.getElementById(id);
+      b.disabled = false;
+      b.classList.remove('btn-loading');
+      b.classList.add('btn-scenario');
+    });
+    // Enable move hazard only if current scenario is phase1
+    var moveBtn2 = document.getElementById('btn-move');
+    if (currentScenario && PHASE2_MAP[currentScenario]) {
+      moveBtn2.disabled = false;
+    } else {
+      moveBtn2.disabled = true;
+    }
+  }, 8000);
+}
+
+// ── moveHazard ───────────────────────────────────────────────────────────────
+function moveHazard() {
+  if (!currentScenario || !PHASE2_MAP[currentScenario]) return;
+  triggerScenario(PHASE2_MAP[currentScenario]);
+}
+
+// ── resetAll ─────────────────────────────────────────────────────────────────
+function resetAll() {
+  NODES.forEach(function(nodeId) {
+    var card   = document.getElementById('card-'   + nodeId);
+    var arrow  = document.getElementById('arrow-'  + nodeId);
+    var status = document.getElementById('status-' + nodeId);
+    var text   = document.getElementById('text-'   + nodeId);
+    var lock   = document.getElementById('lock-'   + nodeId);
+    var audio  = document.getElementById('audio-'  + nodeId);
+
+    card.className = 'node-card idle';
+    arrow.innerHTML = ARROW_SVG;
+    arrow.style.transform = '';
+    status.className = 'node-status status-idle';
+    status.textContent = '閒置';
+    text.textContent = '—';
+    lock.innerHTML = LOCK_CLOSED_SVG;
+    audio.src = '';
+    audio.pause();
+
+    // Reset spatial
+    var spCard   = document.getElementById('card-sp-' + nodeId);
+    var spArrow  = document.getElementById('arrow-sp-' + nodeId);
+    var spStatus = document.getElementById('status-sp-' + nodeId);
+    if (spCard) {
+      spCard.className = 'node-card idle spatial-n' + nodeId.slice(1).toLowerCase();
+      spArrow.innerHTML = ARROW_SVG;
+      spArrow.style.transform = '';
+      spStatus.className = 'node-status status-idle';
+      spStatus.textContent = '閒置';
+    }
+
+    // Reset floor plan
+    var fpCircle = document.getElementById('fp-' + nodeId);
+    var fpLabel  = document.getElementById('fp-label-' + nodeId);
+    var fpPulse  = document.getElementById('fp-pulse-' + nodeId);
+    var fpArrow  = document.getElementById('fp-arrow-' + nodeId);
+    if (fpCircle) {
+      fpCircle.setAttribute('fill', '#f3f4f6');
+      fpCircle.setAttribute('stroke', '#e5e7eb');
+      fpLabel.setAttribute('fill', '#374151');
+      fpPulse.setAttribute('opacity', '0');
+      fpPulse.style.animationPlayState = 'paused';
+      fpArrow.innerHTML = '';
+    }
+  });
+
+  // Reset all floor plan edges
+  var edgeIds = ['N1-N2','N2-N1','N2-N3','N3-N2','N3-N4','N4-N3','N4-N5','N5-N4'];
+  edgeIds.forEach(function(id) {
+    var e = document.getElementById('fp-edge-' + id);
+    if (e) e.style.display = 'none';
+  });
+
+  clearTimer();
+  stopPolling();
+  currentScenario = null;
+  lastRunId = null;
+  lastRenderedRunId = null;
+  iotReceivedNodes = new Set();
+  iotCurrentRunId = null;
+  nodeReadings = {};
+  nodeHistory = {};
+
+  document.getElementById('timer-bar').innerHTML = '<span class="timer-label">點擊情境按鈕開始</span>';
+  document.getElementById('mqtt-log').innerHTML = '<div class="log-empty">等待訊息中...</div>';
+  logCount = 0;
+
+  // Disable move hazard
+  document.getElementById('btn-move').disabled = true;
+
+  // Reset telemetry display — clear all values and colors
+  NODES.forEach(function(nodeId) {
+    var row = document.getElementById('telemetry-row-' + nodeId);
+    if (!row) return;
+    row.querySelector('.tel-mq2').textContent    = '—';
+    row.querySelector('.tel-mq2').className      = 'tel-mq2';
+    row.querySelector('.tel-mq135').textContent  = '—';
+    row.querySelector('.tel-mq135').className    = 'tel-mq135';
+    row.querySelector('.tel-temp').textContent   = '—';
+    row.querySelector('.tel-temp').className     = 'tel-temp';
+    row.querySelector('.tel-status').textContent = '—';
+    row.querySelector('.tel-status').className   = 'tel-status';
+    row.querySelector('.tel-ts').textContent     = '—';
+  });
+
+  // Close sidebar if open
+  closeSidebar();
+}
+
+// ── Timer ────────────────────────────────────────────────────────────────────
+function startTimer() {
+  timerStart = Date.now();
+  timerStopped = false;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(function() {
+    if (!timerStopped) {
+      var ms = Date.now() - timerStart;
+      var scenarioLabel = currentScenario ? ('<span class="scenario-name">情境：' + (SCENARIO_NAMES[currentScenario] || currentScenario) + '</span><span class="timer-sep">｜</span>') : '';
+      document.getElementById('timer-bar').innerHTML =
+        scenarioLabel +
+        '<span class="timer-label">端對端延遲</span><span class="elapsed">' + (ms / 1000).toFixed(1) + 's</span>';
+    }
+  }, 100);
+}
+
+function stopTimer() {
+  if (timerStopped || !timerStart) return;
+  timerStopped = true;
+  clearInterval(timerInterval);
+  var ms = Date.now() - timerStart;
+  var scenarioLabel = currentScenario ? ('<span class="scenario-name">情境：' + (SCENARIO_NAMES[currentScenario] || currentScenario) + '</span><span class="timer-sep">｜</span>') : '';
+  document.getElementById('timer-bar').innerHTML =
+    scenarioLabel +
+    '<span class="timer-label">端對端延遲</span><span class="done">' + (ms / 1000).toFixed(2) + 's</span>';
+}
+
+function clearTimer() {
+  timerStart = null;
+  timerStopped = false;
+  clearInterval(timerInterval);
+}
+
+// ── Log helpers ───────────────────────────────────────────────────────────────
+function appendLog(topic, cmd) {
+  var log = document.getElementById('mqtt-log');
+  if (logCount === 0) log.innerHTML = '';
+  logCount++;
+
+  var now = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+  var dir = cmd.direction || '?';
+  var txt = cmd.text ? cmd.text.slice(0, 40) : '';
+
+  var entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML =
+    '<span class="log-time">' + now + '</span>' +
+    '<span class="log-topic">' + topic + '</span>' +
+    '<span class="log-dir">' + dir + '</span>' +
+    '<span class="log-text">' + txt + '</span>';
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function appendSystemLog(msg) {
+  var log = document.getElementById('mqtt-log');
+  if (logCount === 0) log.innerHTML = '';
+  logCount++;
+
+  var now = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+  var entry = document.createElement('div');
+  entry.className = 'log-entry log-system';
+  entry.innerHTML = '<span class="log-time">' + now + '</span><span class="log-text">' + msg + '</span>';
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function setConnStatus(state, msg) {
+  var el = document.getElementById('conn-status');
+  el.className = 'conn-badge ' + state;
+  el.textContent = msg;
+}
+
+// ── S3 polling fallback ───────────────────────────────────────────────────────
+var pollInterval = null;
+var lastRunId = null;
+
+async function pollLatestRoutes() {
+  try {
+    var url = await buildPresignedS3Url('latest-routes.json');
+    var resp = await fetch(url);
+    if (!resp.ok) return;
+
+    var commands = await resp.json();
+    var firstNode = Object.values(commands)[0];
+    if (!firstNode) return;
+    var runId = firstNode.run_id;
+    if (runId === lastRunId) return;
+
+    var nodeCount = Object.keys(commands).length;
+    if (nodeCount < NODES.length) return;
+
+    lastRunId = runId;
+
+    for (var nodeId in commands) {
+      if (runId === lastRenderedRunId) break;
+      renderNode(nodeId, commands[nodeId]);
+      appendLog('smartevac/cmd/' + nodeId, commands[nodeId]);
+    }
+    lastRenderedRunId = runId;
+    stopTimer();
+    stopPolling();
+  } catch (e) {
+    // silently ignore
+  }
+}
+
+function startPolling() {
+  stopPolling();
+  pollInterval = setInterval(pollLatestRoutes, 1500);
+  setTimeout(stopPolling, 30000);
+}
+
+function stopPolling() {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+}
+
+async function buildPresignedS3Url(key) {
+  var cfg = SMARTEVAC_CONFIG;
+  var bucket = cfg.outputBucket;
+  var region = cfg.region;
+  var host = bucket + '.s3.' + region + '.amazonaws.com';
+
+  var now = new Date();
+  var amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').slice(0, 15) + 'Z';
+  var dateStamp = amzDate.slice(0, 8);
+  var service = 's3';
+  var credScope = dateStamp + '/' + region + '/' + service + '/aws4_request';
+
+  var queryParams = [
+    'X-Amz-Algorithm=AWS4-HMAC-SHA256',
+    'X-Amz-Credential=' + encodeURIComponent(cfg.accessKeyId + '/' + credScope),
+    'X-Amz-Date=' + amzDate,
+    'X-Amz-Expires=60',
+    'X-Amz-SignedHeaders=host',
+    cfg.sessionToken ? 'X-Amz-Security-Token=' + encodeURIComponent(cfg.sessionToken) : '',
+  ].filter(Boolean).join('&');
+
+  var canonicalRequest = [
+    'GET', '/' + key, queryParams,
+    'host:' + host + '\n',
+    'host',
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+
+  var enc = new TextEncoder();
+  var hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(canonicalRequest));
+  var canonicalHash = buf2hex(hashBuf);
+
+  var stringToSign = ['AWS4-HMAC-SHA256', amzDate, credScope, canonicalHash].join('\n');
+
+  var sigKey = await getSignatureKey(cfg.secretAccessKey, dateStamp, region, service);
+  var sigBuf = await sign(sigKey, stringToSign);
+  var signature = buf2hex(sigBuf);
+
+  return 'https://' + host + '/' + key + '?' + queryParams + '&X-Amz-Signature=' + signature;
+}
+
+</script>
+</body>
+</html>
