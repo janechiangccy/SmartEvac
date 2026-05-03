@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import time
+import uuid
 from decimal import Decimal
 from pathlib import Path
 
@@ -33,6 +34,12 @@ ALERT_THRESHOLD_TEMP = float(os.environ.get("ALERT_THRESHOLD_TEMP", "35"))
 TELEMETRY_TABLE = os.environ.get("TELEMETRY_TABLE", "SmartEvacTelemetry")
 
 SCENARIO_DIR = Path(__file__).parent / "scenarios"
+CORS_HEADERS = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type,Authorization",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+}
 
 _iot_client = None
 _dynamodb = None
@@ -72,6 +79,14 @@ def _clear_telemetry_table() -> None:
         logger.warning(f"[ClearTelemetry] Failed (non-fatal): {e}")
 
 
+def _response(status_code: int, body: dict) -> dict:
+    return {
+        "statusCode": status_code,
+        "headers": CORS_HEADERS,
+        "body": json.dumps(body, ensure_ascii=False),
+    }
+
+
 def _write_telemetry_to_dynamo(reading: dict) -> None:
     """Write telemetry reading to DynamoDB TelemetryTable."""
     if not TELEMETRY_TABLE:
@@ -86,6 +101,8 @@ def _write_telemetry_to_dynamo(reading: dict) -> None:
             "mq135": Decimal(str(reading.get("mq135", 0.0))),
             "temp_c": Decimal(str(reading.get("temp_c", 24.0))),
             "alert_level": reading.get("alert_level", "normal"),
+            "scenario": reading.get("scenario", "unknown"),
+            "scenario_run_id": reading.get("scenario_run_id", "unknown"),
             "ttl": ts + 120,  # expire after 2 minutes
         })
     except Exception as e:
@@ -126,34 +143,26 @@ def _resolve_scenario_name(event: dict) -> str | None:
 
 
 def lambda_handler(event: dict, context) -> dict:
+    if event.get("httpMethod") == "OPTIONS":
+        return {"statusCode": 204, "headers": CORS_HEADERS, "body": ""}
+
     name = _resolve_scenario_name(event)
     if not name:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "missing scenario name"}),
-        }
+        return _response(400, {"error": "missing scenario name"})
 
     try:
         scenario = load_scenario(name)
     except FileNotFoundError:
-        return {
-            "statusCode": 404,
-            "body": json.dumps({"error": f"unknown scenario: {name}"}),
-        }
+        return _response(404, {"error": f"unknown scenario: {name}"})
     except json.JSONDecodeError as e:
         logger.error(f"scenario JSON parse failed: {e}")
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": "invalid scenario file"}),
-        }
+        return _response(500, {"error": "invalid scenario file"})
 
     client = _client()
     if client is None:
         logger.warning("⚠️  IOT_ENDPOINT 未設定，dry-run（不實際 publish）")
 
-    # 清除舊 telemetry，避免上一個情境的資料影響本次污染判斷
-    _clear_telemetry_table()
-
+    scenario_run_id = uuid.uuid4().hex[:10]
     last_t = 0.0
     published = 0
     threshold_crossings = 0
@@ -176,6 +185,8 @@ def lambda_handler(event: dict, context) -> dict:
             "mq135": float(evt.get("mq135", 0.0)),
             "temp_c": float(evt.get("temp_c", 24.0)),
             "alert_level": "pre_scan",
+            "scenario": name,
+            "scenario_run_id": scenario_run_id,
         }
         if compute_alert_level(pre_reading) == "alert":
             _write_telemetry_to_dynamo(pre_reading)
@@ -195,6 +206,7 @@ def lambda_handler(event: dict, context) -> dict:
             "mq135": float(evt.get("mq135", 0.0)),
             "temp_c": float(evt.get("temp_c", 24.0)),
             "scenario": name,
+            "scenario_run_id": scenario_run_id,
         }
         raw_level = compute_alert_level(reading)
         if raw_level == "alert":
@@ -230,19 +242,13 @@ def lambda_handler(event: dict, context) -> dict:
         )
 
     elapsed_ms = int((time.time() - t_start) * 1000)
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(
-            {
-                "scenario": name,
-                "events_total": len(scenario["events"]),
-                "published": published,
-                "threshold_crossings": threshold_crossings,
-                "hazard_triggers": hazard_triggers,
-                "elapsed_ms": elapsed_ms,
-                "duration_sec": scenario.get("duration_sec"),
-            },
-            ensure_ascii=False,
-        ),
-    }
+    return _response(200, {
+        "scenario": name,
+        "scenario_run_id": scenario_run_id,
+        "events_total": len(scenario["events"]),
+        "published": published,
+        "threshold_crossings": threshold_crossings,
+        "hazard_triggers": hazard_triggers,
+        "elapsed_ms": elapsed_ms,
+        "duration_sec": scenario.get("duration_sec"),
+    })

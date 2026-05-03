@@ -41,12 +41,15 @@ def load_topology() -> dict:
     return dynamo.load_topology()
 
 
-def load_recent_telemetry(window_sec: int = 30) -> dict:
+def load_recent_telemetry(window_sec: int = 30, scenario_run_id: str | None = None) -> dict:
     """從 DynamoDB SmartEvacTelemetry 讀最近 window_sec 秒讀值。
 
     回傳：{node_id: [reading_dict, ...]}
     """
-    return dynamo.load_recent_telemetry(window_sec=window_sec)
+    return dynamo.load_recent_telemetry(
+        window_sec=window_sec,
+        scenario_run_id=scenario_run_id,
+    )
 
 
 def score_contamination(triggering_node: str, telemetry: dict) -> set[str]:

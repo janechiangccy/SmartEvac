@@ -43,6 +43,21 @@ s3 = boto3.client("s3")
 
 OUTPUT_BUCKET = os.environ.get("OUTPUT_BUCKET", "")
 PRESIGNED_URL_TTL = int(os.environ.get("PRESIGNED_URL_TTL", "600"))
+NODE_LABELS_ZH = {
+    "N1": "北側出口",
+    "N2": "西北走廊",
+    "N3": "中央大廳",
+    "N4": "東南走廊",
+    "N5": "南側出口",
+}
+SCENARIO_CAUSE_ZH = {
+    "chemical_lab_leak": "化學實驗室乙醇外洩，有害氣體濃度過高",
+    "chemical_lab_leak_phase2": "化學實驗室乙醇外洩擴散，有害氣體持續蔓延",
+    "basement_fire": "地下室火災，偵測到高溫與煙霧",
+    "basement_fire_phase2": "地下室火災擴散，煙霧與高溫持續蔓延",
+    "gas_leak": "瓦斯洩漏，可燃氣體濃度過高",
+    "gas_leak_phase2": "瓦斯洩漏擴散，可燃氣體持續蔓延",
+}
 
 
 def parse_iot_alert(event: dict) -> dict:
@@ -57,7 +72,55 @@ def parse_iot_alert(event: dict) -> dict:
         "temp_c": float(event.get("temp_c", 0.0)),
         "alert_level": event.get("alert_level", "unknown"),
         "scenario": event.get("scenario", "unknown"),
+        "scenario_run_id": event.get("scenario_run_id", "unknown"),
     }
+
+
+def _fallback_instruction(node_id: str, route: dict, topology: dict, contaminated: set[str], scenario_name: str) -> str:
+    label = topology.get(node_id, {}).get("human_label", node_id)
+    next_hop = route.get("next_hop")
+    next_label = topology.get(next_hop, {}).get("human_label", next_hop) if next_hop else None
+    scenario_label = scenario_name.replace("_phase2", " phase 2").replace("_", " ")
+    if node_id in contaminated:
+        if next_hop:
+            return f"{scenario_label}，{label} 為危險區域，請立即離開，往 {next_label} 方向移動。"
+        return f"{scenario_label}，{label} 為危險區域，請就地避難並等待救援。"
+    if topology.get(node_id, {}).get("is_exit"):
+        return f"{scenario_label}，這裡是安全出口，請依照出口指示離開建築物。"
+    if next_hop:
+        return f"{scenario_label}，請保持冷靜，往 {next_label} 方向有序疏散。"
+    return f"{scenario_label}，目前無安全路徑，請就地避難並等待救援。"
+
+
+def build_fallback_instructions(routes: dict[str, dict], topology: dict, contaminated: set[str], scenario_name: str) -> dict[str, str]:
+    return {
+        node_id: _fallback_instruction(node_id, route, topology, contaminated, scenario_name)
+        for node_id, route in routes.items()
+    }
+
+
+def normalize_safety_instructions(
+    texts: dict[str, str],
+    routes: dict[str, dict],
+    topology: dict,
+    contaminated: set[str],
+    scenario_name: str,
+) -> dict[str, str]:
+    """Keep critical danger-node instructions deterministic across UI, MQTT log, and TTS."""
+    normalized = dict(texts)
+    cause = SCENARIO_CAUSE_ZH.get(scenario_name, "現場發生環境異常")
+    for node_id in contaminated:
+        route = routes.get(node_id, {})
+        next_hop = route.get("next_hop")
+        if next_hop:
+            next_label = NODE_LABELS_ZH.get(
+                next_hop,
+                topology.get(next_hop, {}).get("human_label", next_hop),
+            )
+            normalized[node_id] = f"{cause}。危險區域，立即離開，往 {next_hop} {next_label} 移動。"
+        else:
+            normalized[node_id] = f"{cause}。危險區域，請立即依現場指示離開。"
+    return normalized
 
 
 def upload_mp3(node_id: str, mp3_bytes: bytes, run_id: str) -> str:
@@ -106,7 +169,7 @@ def lambda_handler(event: dict, context) -> dict:
 
     contaminated = mocks.score_contamination(
         triggering_node,
-        mocks.load_recent_telemetry(),
+        mocks.load_recent_telemetry(scenario_run_id=alert.get("scenario_run_id")),
     )
     routes, dist = mocks.plan_routes(topology, contaminated)
     logger.info(
@@ -136,17 +199,24 @@ def lambda_handler(event: dict, context) -> dict:
         )
     except (genai_errors.APIError, ValueError, json.JSONDecodeError) as e:
         logger.error(f"Gemini 失敗：{e}")
-        return {"statusCode": 502, "body": json.dumps({"error": "gemini failed"})}
+        texts = build_fallback_instructions(routes, topology, contaminated, scenario_name)
+        logger.warning(f"[{run_id}] using deterministic fallback instructions")
+    texts = normalize_safety_instructions(
+        texts, routes, topology, contaminated, scenario_name
+    )
 
     # 4. 並行 TTS
     try:
         mp3_map = parallel_synthesize(texts)
     except urllib.error.HTTPError as e:
         logger.error(f"TTS HTTP {e.code}: {e.read()[:200]}")
-        return {"statusCode": 502, "body": json.dumps({"error": f"tts {e.code}"})}
+        mp3_map = {}
     except urllib.error.URLError as e:
         logger.error(f"TTS network: {e}")
-        return {"statusCode": 502, "body": json.dumps({"error": "tts network"})}
+        mp3_map = {}
+    except Exception as e:
+        logger.error(f"TTS failed: {e}")
+        mp3_map = {}
 
     # 5. S3 上傳 + presigned URL
     presigned_map: dict[str, str] = {}
@@ -156,13 +226,18 @@ def lambda_handler(event: dict, context) -> dict:
             presigned_map[node_id] = make_presigned_url(key)
     except ClientError as e:
         logger.error(f"S3 上傳失敗：{e}")
-        return {"statusCode": 500, "body": json.dumps({"error": "s3 upload failed"})}
+        presigned_map = {}
 
     # 6. 組指令 payload + 並行 publish
     iso_ts = datetime.now(timezone.utc).isoformat()
     commands = {
         node_id: {
             "node_id": node_id,
+            "scenario_run_id": alert.get("scenario_run_id", "unknown"),
+            "phase": "phase2" if scenario_name.endswith("_phase2") else "phase1",
+            "source_node": triggering_node,
+            "generated_at_ms": int(time.time() * 1000),
+            "scenario": scenario_name,
             "direction": routes[node_id]["direction"],
             "next_hop": routes[node_id]["next_hop"],
             "text": texts[node_id],
@@ -199,6 +274,7 @@ def lambda_handler(event: dict, context) -> dict:
         "body": json.dumps(
             {
                 "run_id": run_id,
+                "scenario_run_id": alert.get("scenario_run_id", "unknown"),
                 "triggering_node": triggering_node,
                 "contaminated": sorted(contaminated),
                 "nodes_handled": list(commands.keys()),

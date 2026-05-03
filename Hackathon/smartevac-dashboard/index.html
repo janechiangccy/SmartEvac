@@ -17,6 +17,7 @@
     min-height: 100vh;
     padding: 24px;
   }
+  body.node-fullscreen-open { overflow: hidden; }
 
   /* Setup Overlay */
   #setup-overlay {
@@ -71,15 +72,15 @@
     background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
     padding: 16px 24px; margin-bottom: 24px;
   }
-  .header-left { display: flex; align-items: center; gap: 12px; }
-  .header-right { display: flex; align-items: center; gap: 8px; }
+  .header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
   .header-logo {
     width: 32px; height: 32px; background: #111827; border-radius: 6px;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .header-logo svg { width: 18px; height: 18px; }
   .header-title { font-size: 1rem; font-weight: 700; color: #111827; line-height: 1.2; }
-  .header-subtitle { font-size: 0.75rem; color: #6b7280; margin-top: 1px; }
+  .header-subtitle { font-size: 0.75rem; color: #6b7280; margin-top: 1px; line-height: 1.35; }
 
   /* Connection badge */
   .conn-badge {
@@ -97,6 +98,7 @@
   }
   .role-badge.monitor { background: #f3f4f6; border-color: #e5e7eb; color: #6b7280; }
   .role-badge.node    { background: #eff6ff; border-color: #bfdbfe; color: #2563eb; }
+  #ctrl-audio-btn { white-space: nowrap; }
 
   /* Section label */
   .section-label {
@@ -144,6 +146,15 @@
   #timer-bar .done    { color: #16a34a; font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
   #timer-bar .scenario-name { color: #374151; font-size: 0.8rem; font-weight: 500; }
   .timer-sep { color: #d1d5db; font-size: 0.8rem; }
+  .event-summary {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; flex-wrap: wrap; font-size: 0.82rem; color: #374151;
+  }
+  .event-summary strong { color: #111827; font-weight: 700; }
+  .event-summary .summary-danger { color: #dc2626; font-weight: 700; }
+  .event-summary .summary-exit { color: #2563eb; font-weight: 700; }
+  .event-summary .summary-time { color: #16a34a; font-weight: 700; font-size: 1rem; }
+  .event-summary .summary-phase { color: #d97706; font-weight: 700; }
 
   /* Geography tabs */
   .geo-tabs {
@@ -245,9 +256,12 @@
   /* SVG floor plan */
   #view-map {
     background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
-    padding: 16px; margin-bottom: 0;
+    padding: 16px; margin-bottom: 0; overflow: auto;
   }
-  #floor-plan-svg { display: block; margin: 0 auto; max-width: 100%; max-height: 380px; }
+  #floor-plan-svg {
+    display: block; margin: 0 auto; width: min(100%, 560px);
+    height: auto; max-height: min(58vh, 520px);
+  }
   .fp-node-circle { transition: fill 0.3s, stroke 0.3s; cursor: pointer; }
   .fp-node-label { font-family: Inter, sans-serif; font-size: 11px; font-weight: 600; pointer-events: none; }
   .fp-node-sublabel { font-family: Inter, sans-serif; font-size: 9px; pointer-events: none; fill: #6b7280; }
@@ -274,6 +288,7 @@
   .spatial-n3 { grid-column: 3; grid-row: 1; }
   .spatial-n4 { grid-column: 3; grid-row: 2; }
   .spatial-n5 { grid-column: 3; grid-row: 3; }
+  .spatial-grid .node-card { min-height: 118px; }
 
   /* Telemetry panel */
   .telemetry-section {
@@ -354,7 +369,7 @@
   /* ── Node fullscreen view ─────────────────────────────────────────── */
   #node-fullscreen {
     display: none;
-    position: fixed; inset: 0; z-index: 900;
+    position: fixed; inset: 0; z-index: 1100;
     background: #f3f4f6;
     flex-direction: column;
     align-items: center; justify-content: center;
@@ -467,6 +482,81 @@
   .nf-audio-btn:hover { background: #1f2937; }
   .nf-audio-btn.muted { background: #dc2626; }
   .nf-audio-btn svg { width: 24px; height: 24px; color: white; }
+
+  @media (max-width: 720px) {
+    body { padding: 12px; }
+    .setup-card { max-width: 100%; padding: 32px 28px; }
+    .header {
+      align-items: stretch; gap: 14px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .header-left { align-items: flex-start; }
+    .header-left > div:last-child { min-width: 0; }
+    .header-title { font-size: 0.98rem; overflow-wrap: anywhere; }
+    .header-subtitle { font-size: 0.72rem; }
+    .header-right { justify-content: flex-start; gap: 6px; }
+    .conn-badge, .role-badge { font-size: 0.7rem; padding: 4px 10px; }
+    #ctrl-audio-btn {
+      padding: 6px 10px !important;
+      min-width: 92px;
+      text-align: center;
+    }
+    .controls-section, .timer-section, .telemetry-section, .log-section {
+      padding-left: 16px; padding-right: 16px;
+      margin-bottom: 12px;
+    }
+    .controls-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .controls-row .btn { width: 100%; padding: 9px 10px; }
+    .btn-divider { display: none; }
+    .nodes-section > div:first-child {
+      align-items: stretch !important;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .geo-tabs { width: 100%; }
+    .geo-tab { flex: 1; padding-left: 8px; padding-right: 8px; }
+    .nodes-grid { gap: 10px; }
+    #view-map { padding: 10px; }
+    #floor-plan-svg { width: 100%; max-height: 38vh; }
+    .spatial-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: none;
+      max-width: none;
+      gap: 8px;
+    }
+    .spatial-n1, .spatial-n2, .spatial-n3, .spatial-n4, .spatial-n5 {
+      grid-column: auto; grid-row: auto;
+    }
+    .spatial-grid .node-card {
+      min-height: 86px;
+      padding-top: 12px; padding-bottom: 10px;
+    }
+    .spatial-grid .node-label { margin-top: 14px; margin-bottom: 6px; }
+    .spatial-grid .node-arrow { width: 20px; height: 20px; margin-bottom: 4px; }
+    .spatial-grid .node-arrow svg { width: 20px; height: 20px; }
+    .nf-card { padding: 32px 28px; gap: 24px; }
+    .nf-row-sensors { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 420px) {
+    body { padding: 8px; }
+    .header { padding: 14px; }
+    .header-logo { width: 30px; height: 30px; }
+    .header-title { font-size: 0.92rem; }
+    .controls-row { grid-template-columns: 1fr; }
+    .nodes-grid { grid-template-columns: 1fr; }
+    #floor-plan-svg { max-height: 36vh; }
+    .spatial-grid { grid-template-columns: 1fr; }
+    .nf-header { margin-bottom: 18px; }
+    .nf-card { border-radius: 16px; padding: 28px 22px; }
+    .nf-row-id { align-items: flex-start; gap: 16px; }
+    .nf-node-id { font-size: 2.55rem; }
+    .nf-status-badge { font-size: 0.85rem; padding: 7px 14px; }
+  }
 </style>
 </head>
 <body>
@@ -796,7 +886,7 @@
   </div>
 </div>
 <!-- Node Fullscreen View -->
-<div id="node-fullscreen">
+<div id="node-fullscreen" aria-hidden="true" inert>
   <div class="nf-header">
     <div class="nf-logo">
       <div class="nf-logo-icon">
@@ -890,8 +980,40 @@ var NODE_LABELS = {
   N1: '北側出口', N2: '西北走廊', N3: '中央大廳', N4: '東南走廊', N5: '南側出口'
 };
 
+function setElementInert(el, inert) {
+  if (!el) return;
+  if (inert) {
+    el.setAttribute('aria-hidden', 'true');
+    el.inert = true;
+  } else {
+    el.removeAttribute('aria-hidden');
+    el.inert = false;
+  }
+}
+
+function setNodeFullscreenActive(active) {
+  var fs = document.getElementById('node-fullscreen');
+  if (!fs) return;
+
+  fs.classList.toggle('active', active);
+  fs.setAttribute('aria-hidden', active ? 'false' : 'true');
+  fs.inert = !active;
+  document.body.classList.toggle('node-fullscreen-open', active);
+
+  Array.prototype.forEach.call(document.body.children, function(child) {
+    if (child === fs || child.tagName === 'SCRIPT') return;
+    setElementInert(child, active);
+  });
+
+  if (active) {
+    var audioBtn = document.getElementById('nf-audio-btn');
+    if (audioBtn) audioBtn.focus({ preventScroll: true });
+  }
+}
+
 function enterSystem() {
   selectedRole = document.getElementById('role-select').value;
+  var overlay = document.getElementById('setup-overlay');
 
   // 指揮中心：預設靜音；節點：預設播放
   audioMode = (selectedRole === '') ? 'mute' : 'play';
@@ -901,20 +1023,32 @@ function enterSystem() {
   if (selectedRole === '') {
     badge.textContent = '指揮中心';
     badge.className = 'role-badge monitor';
+    setNodeFullscreenActive(false);
     // 顯示指揮中心音訊開關
     document.getElementById('ctrl-audio-btn').style.display = '';
   } else {
     badge.textContent = selectedRole + ' ' + (NODE_LABELS[selectedRole] || '');
     badge.className = 'role-badge node';
+    overlay.style.transition = 'none';
+    overlay.style.opacity = '0';
+    overlay.style.display = 'none';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.inert = true;
     // 啟動節點全螢幕
     showNodeFullscreen(selectedRole);
   }
 
-  var overlay = document.getElementById('setup-overlay');
+  if (selectedRole !== '') {
+    connectMqtt();
+    return;
+  }
+
   overlay.style.opacity = '0';
   overlay.style.transition = 'opacity 0.3s ease';
   setTimeout(function() {
     overlay.style.display = 'none';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.inert = true;
     connectMqtt();
   }, 300);
 }
@@ -943,7 +1077,7 @@ function toggleNfAudio() {
 // ── 節點全螢幕顯示 ────────────────────────────────────────────────────────────
 function showNodeFullscreen(nodeId) {
   var fs = document.getElementById('node-fullscreen');
-  fs.classList.add('active');
+  setNodeFullscreenActive(true);
   document.getElementById('nf-node-id').textContent = nodeId;
   document.getElementById('nf-node-name').textContent = NODE_LABELS[nodeId] || nodeId;
 }
@@ -1228,6 +1362,12 @@ var SCENARIO_NAMES = {
   'gas_leak_phase2': '瓦斯洩漏 Phase 2'
 };
 
+var PHASE2_BUTTON_LABELS = {
+  'chemical_lab_leak': '模擬毒氣擴散',
+  'basement_fire': '模擬火勢擴散',
+  'gas_leak': '模擬瓦斯擴散'
+};
+
 var PHASE2_MAP = {
   'chemical_lab_leak': 'chemical_lab_leak_phase2',
   'basement_fire': 'basement_fire_phase2',
@@ -1408,6 +1548,7 @@ function renderNode(nodeId, cmd, playAudio) {
   var dir = cmd.direction || '?';
   var isContaminated = cmd.is_contaminated;
   var isExit = cmd.is_exit;
+  var displayText = getDisplayNodeText(nodeId, cmd);
 
   // Set arrow SVG（污染節點也顯示逃生方向）
   setArrowSvg(arrow, dir);
@@ -1440,20 +1581,20 @@ function renderNode(nodeId, cmd, playAudio) {
       audio.removeEventListener('loadedmetadata', onMeta);
       var dur = audio.duration;
       if (dur && isFinite(dur)) {
-        typewriterEffect(text, cmd.text || '—', dur * 1000);
+        typewriterEffect(text, displayText, dur * 1000);
       } else {
-        typewriterEffect(text, cmd.text || '—', durationMs);
+        typewriterEffect(text, displayText, durationMs);
       }
     });
     setTimeout(function() {
-      if (text.textContent === '') typewriterEffect(text, cmd.text || '—', durationMs);
+      if (text.textContent === '') typewriterEffect(text, displayText, durationMs);
     }, 500);
   } else if (!playAudio) {
     // 視覺渲染階段：先顯示文字（不播音訊），等 executePlaySchedule 輪到時再跑打字機
     // 若 executePlaySchedule 未執行，文字仍可見
-    text.textContent = cmd.text || '—';
+    text.textContent = displayText;
   } else {
-    typewriterEffect(text, cmd.text || '—', durationMs);
+    typewriterEffect(text, displayText, durationMs);
   }
 
   // Update spatial view mirror
@@ -1489,6 +1630,39 @@ function renderNode(nodeId, cmd, playAudio) {
 
   // Refresh sidebar if open for this node
   if (sidebarNodeId) refreshSidebarContent();
+}
+
+function getDisplayNodeText(nodeId, cmd) {
+  if (!cmd) return '—';
+  return cmd.text || '—';
+}
+
+function getPhaseLabel(name) {
+  if (!name) return '';
+  return /_phase2$/.test(name) ? 'Phase 2 擴散' : 'Phase 1 初始事件';
+}
+
+function summarizeCurrentEvent(elapsedMs) {
+  var dangerNodes = [];
+  var exitNodes = [];
+  NODES.forEach(function(nid) {
+    var reading = nodeReadings[nid];
+    if (!reading) return;
+    if (reading.is_contaminated) dangerNodes.push(nid);
+    if (reading.is_exit) exitNodes.push(nid);
+  });
+  var scenarioLabel = SCENARIO_NAMES[currentScenario] || currentScenario || '目前情境';
+  return '<div class="event-summary">' +
+    '<strong>' + scenarioLabel + '</strong>' +
+    '<span class="timer-sep">｜</span>' +
+    '<span class="summary-phase">' + getPhaseLabel(currentScenario) + '</span>' +
+    '<span class="timer-sep">｜</span>' +
+    '<span>危險節點 <span class="summary-danger">' + (dangerNodes.join(', ') || '待判定') + '</span></span>' +
+    '<span class="timer-sep">｜</span>' +
+    '<span>出口 <span class="summary-exit">' + (exitNodes.join(', ') || '待判定') + '</span></span>' +
+    '<span class="timer-sep">｜</span>' +
+    '<span>完成 <span class="summary-time">' + (elapsedMs / 1000).toFixed(2) + 's</span></span>' +
+    '</div>';
 }
 
 // ── scheduleAudioPlayback ─────────────────────────────────────────────────────
@@ -1575,6 +1749,7 @@ function executePlaySchedule(cmds, durations, baseTime, offsets) {
   ordered.forEach(function(nodeId) {
     var cmd = cmds[nodeId];
     if (!cmd) return;
+    var displayText = getDisplayNodeText(nodeId, cmd);
     var delay = baseTime > 0
       ? Math.max(0, (baseTime + offsets[nodeId]) - Date.now())
       : Math.max(0, offsets[nodeId]);
@@ -1601,16 +1776,16 @@ function executePlaySchedule(cmds, durations, baseTime, offsets) {
           var twDone = false;
           audio.addEventListener('play', function onPlay() {
             audio.removeEventListener('play', onPlay);
-            if (!twDone) { twDone = true; audioSyncedTypewriter(text, cmd.text || '—', audio); }
+            if (!twDone) { twDone = true; audioSyncedTypewriter(text, displayText, audio); }
           });
           audio.play().catch(function() {});
           setTimeout(function() {
-            if (!twDone) { twDone = true; typewriterEffect(text, cmd.text || '—', dur); }
+            if (!twDone) { twDone = true; typewriterEffect(text, displayText, dur); }
           }, 800);
         }
       } else if (text) {
         // 指揮中心靜音：打字機速度對齊語音長度
-        typewriterEffect(text, cmd.text || '—', dur);
+        typewriterEffect(text, displayText, dur);
       }
 
       if (canPlayNf && nfTextEl) {
@@ -1622,16 +1797,16 @@ function executePlaySchedule(cmds, durations, baseTime, offsets) {
           var nfTwDone = false;
           nfAudio.addEventListener('play', function onNfPlay() {
             nfAudio.removeEventListener('play', onNfPlay);
-            if (!nfTwDone) { nfTwDone = true; audioSyncedTypewriter(nfTextEl, cmd.text || '—', nfAudio); }
+            if (!nfTwDone) { nfTwDone = true; audioSyncedTypewriter(nfTextEl, displayText, nfAudio); }
           });
           nfAudio.play().catch(function() {});
           setTimeout(function() {
-            if (!nfTwDone) { nfTwDone = true; typewriterEffect(nfTextEl, cmd.text || '—', dur); }
+            if (!nfTwDone) { nfTwDone = true; typewriterEffect(nfTextEl, displayText, dur); }
           }, 800);
         }
       } else if (nfTextEl) {
         // 節點全螢幕靜音
-        typewriterEffect(nfTextEl, cmd.text || '—', dur);
+        typewriterEffect(nfTextEl, displayText, dur);
       }
     }, delay);
   });
@@ -1823,6 +1998,7 @@ function refreshSidebarContent() {
 function triggerScenario(name) {
   currentScenario = name;
   var scenarioNames = { chemical_lab_leak: 'btn-chem', basement_fire: 'btn-fire', gas_leak: 'btn-gas' };
+  if (selectedRole === '') switchTab('map');
 
   // Also disable phase2 scenario buttons if they exist
   Object.values(scenarioNames).forEach(function(id) {
@@ -1860,8 +2036,10 @@ function triggerScenario(name) {
     var moveBtn2 = document.getElementById('btn-move');
     if (currentScenario && PHASE2_MAP[currentScenario]) {
       moveBtn2.disabled = false;
+      moveBtn2.textContent = PHASE2_BUTTON_LABELS[currentScenario] || '模擬危害擴散';
     } else {
       moveBtn2.disabled = true;
+      moveBtn2.textContent = '轉移危害源';
     }
   }, 8000);
 }
@@ -1956,6 +2134,7 @@ function resetAll() {
 
   // Disable move hazard
   document.getElementById('btn-move').disabled = true;
+  document.getElementById('btn-move').textContent = '轉移危害源';
 
   // Reset telemetry display — clear all values and colors
   NODES.forEach(function(nodeId) {
@@ -2032,10 +2211,7 @@ function stopTimer() {
   timerStopped = true;
   clearInterval(timerInterval);
   var ms = Date.now() - timerStart;
-  var scenarioLabel = currentScenario ? ('<span class="scenario-name">情境：' + (SCENARIO_NAMES[currentScenario] || currentScenario) + '</span><span class="timer-sep">｜</span>') : '';
-  document.getElementById('timer-bar').innerHTML =
-    scenarioLabel +
-    '<span class="timer-label">端對端延遲</span><span class="done">' + (ms / 1000).toFixed(2) + 's</span>';
+  document.getElementById('timer-bar').innerHTML = summarizeCurrentEvent(ms);
 }
 
 function clearTimer() {
@@ -2120,13 +2296,14 @@ function returnToSetup() {
   document.getElementById('role-badge').style.display = 'none';
   document.getElementById('ctrl-audio-btn').style.display = 'none';
   // 隱藏節點全螢幕
-  var fs = document.getElementById('node-fullscreen');
-  if (fs) fs.classList.remove('active');
+  setNodeFullscreenActive(false);
   // 重置 setup overlay 選項
   document.getElementById('role-select').value = '';
   selectedRole = '';
   // 顯示 setup overlay
   var overlay = document.getElementById('setup-overlay');
+  overlay.removeAttribute('aria-hidden');
+  overlay.inert = false;
   overlay.style.display = 'flex';
   overlay.style.opacity = '0';
   setTimeout(function() {

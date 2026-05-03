@@ -72,7 +72,7 @@ def load_topology() -> dict:
     return topology
 
 
-def load_recent_telemetry(window_sec: int = 30) -> dict:
+def load_recent_telemetry(window_sec: int = 30, scenario_run_id: str | None = None) -> dict:
     """Load recent telemetry readings from DynamoDB TelemetryTable.
 
     Queries each known node for readings within the last `window_sec` seconds.
@@ -96,6 +96,11 @@ def load_recent_telemetry(window_sec: int = 30) -> dict:
             ScanIndexForward=True,  # oldest first
         )
         items = response.get("Items", [])
+        if scenario_run_id:
+            items = [
+                item for item in items
+                if item.get("scenario_run_id") == scenario_run_id
+            ]
         result[node_id] = [_decimal_to_float(item) for item in items]
 
     return result
