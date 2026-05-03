@@ -350,6 +350,123 @@
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.15); z-index: 499;
   }
   .sidebar-backdrop.open { display: block; }
+
+  /* ── Node fullscreen view ─────────────────────────────────────────── */
+  #node-fullscreen {
+    display: none;
+    position: fixed; inset: 0; z-index: 900;
+    background: #f3f4f6;
+    flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 32px 24px;
+    gap: 0;
+  }
+  #node-fullscreen.active { display: flex; }
+
+  .nf-header {
+    width: 100%; max-width: 700px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .nf-logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nf-logo-icon {
+    width: 36px; height: 36px; background: #111827; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .nf-logo-icon svg { width: 20px; height: 20px; }
+  .nf-logo-text { font-size: 0.9rem; font-weight: 700; color: #111827; }
+  .nf-conn { font-size: 0.75rem; }
+
+  .nf-card {
+    width: 100%; max-width: 700px;
+    background: #ffffff; border: 2px solid #e5e7eb; border-radius: 20px;
+    padding: 40px 48px;
+    display: flex; flex-direction: column; gap: 32px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.07);
+    transition: border-color 0.4s, background 0.4s;
+  }
+  .nf-card.idle   { border-color: #e5e7eb; background: #ffffff; }
+  .nf-card.safe   { border-color: #86efac; background: #f0fdf4; }
+  .nf-card.danger { border-color: #fca5a5; background: #fef2f2; }
+  .nf-card.exit   { border-color: #93c5fd; background: #eff6ff; }
+
+  /* Row 1: Node ID + status badge */
+  .nf-row-id {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nf-node-id {
+    font-size: 3rem; font-weight: 800; color: #111827; line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .nf-node-name {
+    font-size: 1.1rem; color: #6b7280; font-weight: 500; margin-top: 4px;
+  }
+  .nf-status-badge {
+    font-size: 1rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 8px 20px; border-radius: 9999px; border: 2px solid transparent;
+  }
+  .nf-status-badge.idle   { background: #f3f4f6; border-color: #e5e7eb; color: #6b7280; }
+  .nf-status-badge.safe   { background: #dcfce7; border-color: #86efac; color: #16a34a; }
+  .nf-status-badge.danger { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+  .nf-status-badge.exit   { background: #dbeafe; border-color: #93c5fd; color: #2563eb; }
+
+  /* Row 2: Direction arrow */
+  .nf-row-arrow {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 120px;
+  }
+  .nf-arrow-wrap {
+    display: flex; align-items: center; justify-content: center;
+    width: 120px; height: 120px;
+    border-radius: 50%; background: #f3f4f6;
+    transition: background 0.4s, color 0.4s;
+  }
+  .nf-card.idle   .nf-arrow-wrap { background: #f3f4f6; color: #d1d5db; }
+  .nf-card.safe   .nf-arrow-wrap { background: #dcfce7; color: #16a34a; }
+  .nf-card.danger .nf-arrow-wrap { background: #fee2e2; color: #dc2626; }
+  .nf-card.exit   .nf-arrow-wrap { background: #dbeafe; color: #2563eb; }
+  .nf-arrow-wrap svg { width: 72px; height: 72px; }
+
+  /* Row 3: Sensor readings */
+  .nf-row-sensors {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  .nf-sensor {
+    background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px;
+    padding: 14px 16px; text-align: center;
+  }
+  .nf-sensor-label { font-size: 0.7rem; font-weight: 600; color: #9ca3af; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .nf-sensor-value { font-size: 1.5rem; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+  .nf-sensor-value.alert { color: #dc2626; }
+  .nf-sensor-value.warn  { color: #d97706; }
+
+  /* Row 4: Voice text */
+  .nf-row-text {
+    background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 20px 24px; min-height: 72px;
+    display: flex; align-items: center;
+  }
+  .nf-text-content {
+    font-size: 1.15rem; font-weight: 500; color: #374151; line-height: 1.6;
+  }
+  .nf-card.danger .nf-row-text { background: #fff1f2; border-color: #fecaca; }
+  .nf-card.danger .nf-text-content { color: #dc2626; }
+
+  /* Audio toggle button */
+  .nf-audio-btn {
+    position: fixed; bottom: 28px; right: 28px;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: #111827; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    transition: background 0.15s;
+    z-index: 910;
+  }
+  .nf-audio-btn:hover { background: #1f2937; }
+  .nf-audio-btn.muted { background: #dc2626; }
+  .nf-audio-btn svg { width: 24px; height: 24px; color: white; }
 </style>
 </head>
 <body>
@@ -358,36 +475,17 @@
 <div id="setup-overlay">
   <div class="setup-card">
     <div class="setup-title">SmartEvac 智慧疏散引導系統</div>
-    <div class="setup-subtitle">請選擇您的角色與音訊設定</div>
+    <div class="setup-subtitle">請選擇您的身份進入系統</div>
     <div class="setup-field">
-      <label class="setup-label" for="role-select">角色選擇</label>
+      <label class="setup-label" for="role-select">身份選擇</label>
       <select class="setup-select" id="role-select">
-        <option value="">監控模式（預設）</option>
+        <option value="">指揮中心（預設靜音，可手動開啟）</option>
         <option value="N1">N1 — 北側出口</option>
         <option value="N2">N2 — 西北走廊（近實驗室）</option>
         <option value="N3">N3 — 中央大廳</option>
         <option value="N4">N4 — 東南走廊</option>
         <option value="N5">N5 — 南側出口</option>
       </select>
-    </div>
-    <div class="setup-field">
-      <span class="setup-label">音訊設定</span>
-      <div class="setup-radio-group">
-        <label class="setup-radio-label">
-          <input type="radio" name="audio-mode" value="role" checked>
-          <div class="setup-radio-text">
-            <div class="setup-radio-title">依角色播放（預設）</div>
-            <div class="setup-radio-desc">監控模式只播污染源節點語音；節點模式只播自己的節點語音</div>
-          </div>
-        </label>
-        <label class="setup-radio-label">
-          <input type="radio" name="audio-mode" value="mute">
-          <div class="setup-radio-text">
-            <div class="setup-radio-title">全部靜音</div>
-            <div class="setup-radio-desc">不播放任何語音提示</div>
-          </div>
-        </label>
-      </div>
     </div>
     <button class="setup-btn" onclick="enterSystem()">進入系統</button>
   </div>
@@ -396,14 +494,14 @@
 <!-- Header -->
 <header class="header">
   <div class="header-left">
-    <div class="header-logo">
+    <div class="header-logo" onclick="returnToSetup()" style="cursor:pointer" title="回到身份選擇">
       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         <line x1="12" y1="8" x2="12" y2="12"/>
         <line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
     </div>
-    <div>
+    <div onclick="returnToSetup()" style="cursor:pointer" title="回到身份選擇">
       <div class="header-title">SmartEvac 智慧疏散引導系統</div>
       <div class="header-subtitle">Campus Hazard Evacuation — AWS IoT Core + Gemini + TTS</div>
     </div>
@@ -411,6 +509,10 @@
   <div class="header-right">
     <span id="conn-status" class="conn-badge connecting">Connecting...</span>
     <span id="role-badge" class="role-badge monitor" style="display:none"></span>
+    <!-- 指揮中心音訊開關（只在指揮中心模式顯示） -->
+    <button id="ctrl-audio-btn" onclick="toggleCtrlAudio()" style="display:none; padding:6px 14px; border:1px solid #e5e7eb; border-radius:6px; background:#ffffff; font-size:0.78rem; font-weight:500; font-family:inherit; cursor:pointer; color:#374151; transition:background 0.15s;">
+      🔇 靜音中
+    </button>
   </div>
 </header>
 
@@ -450,9 +552,6 @@
 
       <div class="node-card idle" id="card-N1" onclick="openSidebar('N1')">
         <span class="node-id-badge">N1</span>
-        <button class="node-mute-btn" id="mute-N1" onclick="event.stopPropagation(); toggleNodeMute('N1')" title="切換靜音">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        </button>
         <div class="node-label">北側出口</div>
         <div class="node-arrow" id="arrow-N1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
         <div><span class="node-status status-idle" id="status-N1">閒置</span></div>
@@ -462,9 +561,6 @@
 
       <div class="node-card idle" id="card-N2" onclick="openSidebar('N2')">
         <span class="node-id-badge">N2</span>
-        <button class="node-mute-btn" id="mute-N2" onclick="event.stopPropagation(); toggleNodeMute('N2')" title="切換靜音">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        </button>
         <div class="node-label">西北走廊<br>近實驗室</div>
         <div class="node-arrow" id="arrow-N2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
         <div><span class="node-status status-idle" id="status-N2">閒置</span></div>
@@ -474,9 +570,6 @@
 
       <div class="node-card idle" id="card-N3" onclick="openSidebar('N3')">
         <span class="node-id-badge">N3</span>
-        <button class="node-mute-btn" id="mute-N3" onclick="event.stopPropagation(); toggleNodeMute('N3')" title="切換靜音">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        </button>
         <div class="node-label">中央大廳</div>
         <div class="node-arrow" id="arrow-N3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
         <div><span class="node-status status-idle" id="status-N3">閒置</span></div>
@@ -486,9 +579,6 @@
 
       <div class="node-card idle" id="card-N4" onclick="openSidebar('N4')">
         <span class="node-id-badge">N4</span>
-        <button class="node-mute-btn" id="mute-N4" onclick="event.stopPropagation(); toggleNodeMute('N4')" title="切換靜音">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        </button>
         <div class="node-label">東南走廊</div>
         <div class="node-arrow" id="arrow-N4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
         <div><span class="node-status status-idle" id="status-N4">閒置</span></div>
@@ -498,9 +588,6 @@
 
       <div class="node-card idle" id="card-N5" onclick="openSidebar('N5')">
         <span class="node-id-badge">N5</span>
-        <button class="node-mute-btn" id="mute-N5" onclick="event.stopPropagation(); toggleNodeMute('N5')" title="切換靜音">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-        </button>
         <div class="node-label">南側出口</div>
         <div class="node-arrow" id="arrow-N5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
         <div><span class="node-status status-idle" id="status-N5">閒置</span></div>
@@ -513,67 +600,70 @@
 
   <!-- View: SVG Floor Plan -->
   <div id="view-map" style="display:none">
-    <svg id="floor-plan-svg" viewBox="0 0 680 500" style="display:block;margin:0 auto;max-width:100%">
+    <svg id="floor-plan-svg" viewBox="0 0 680 700" style="display:block;margin:0 auto;max-width:100%">
       <defs>
-        <marker id="arr-safe" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-          <polygon points="0 0, 10 4, 0 8" fill="#16a34a"/>
+        <marker id="arr-safe" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+          <polygon points="0 0, 12 4.5, 0 9" fill="#16a34a"/>
         </marker>
-        <marker id="arr-exit" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-          <polygon points="0 0, 10 4, 0 8" fill="#2563eb"/>
+        <marker id="arr-exit" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+          <polygon points="0 0, 12 4.5, 0 9" fill="#2563eb"/>
         </marker>
-        <marker id="arr-idle" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-          <polygon points="0 0, 10 4, 0 8" fill="#d1d5db"/>
+        <marker id="arr-idle" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+          <polygon points="0 0, 12 4.5, 0 9" fill="#d1d5db"/>
         </marker>
       </defs>
 
-      <!-- Base edges (gray, always visible) -->
-      <line x1="155" y1="120" x2="245" y2="120" stroke="#e5e7eb" stroke-width="3"/>
-      <line x1="355" y1="120" x2="445" y2="120" stroke="#e5e7eb" stroke-width="3"/>
-      <line x1="500" y1="175" x2="500" y2="225" stroke="#e5e7eb" stroke-width="3"/>
-      <line x1="500" y1="335" x2="500" y2="385" stroke="#e5e7eb" stroke-width="3"/>
+      <!-- Base edges (gray, always visible) — endpoints at circle edge (r=70) -->
+      <line x1="178" y1="140" x2="232" y2="140" stroke="#e5e7eb" stroke-width="3"/>
+      <line x1="378" y1="140" x2="432" y2="140" stroke="#e5e7eb" stroke-width="3"/>
+      <line x1="510" y1="215" x2="510" y2="295" stroke="#e5e7eb" stroke-width="3"/>
+      <line x1="510" y1="445" x2="510" y2="525" stroke="#e5e7eb" stroke-width="3"/>
 
       <!-- Directed edge arrows (hidden by default) -->
-      <line id="fp-edge-N1-N2" x1="158" y1="116" x2="242" y2="116" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
-      <line id="fp-edge-N2-N1" x1="242" y1="124" x2="158" y2="124" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
-      <line id="fp-edge-N2-N3" x1="358" y1="116" x2="442" y2="116" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
-      <line id="fp-edge-N3-N2" x1="442" y1="124" x2="358" y2="124" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
-      <line id="fp-edge-N3-N4" x1="496" y1="178" x2="496" y2="222" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
-      <line id="fp-edge-N4-N3" x1="504" y1="222" x2="504" y2="178" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
-      <line id="fp-edge-N4-N5" x1="496" y1="338" x2="496" y2="382" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
-      <line id="fp-edge-N5-N4" x1="504" y1="382" x2="504" y2="338" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N1-N2" x1="180" y1="134" x2="230" y2="134" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N2-N1" x1="230" y1="146" x2="180" y2="146" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N2-N3" x1="380" y1="134" x2="430" y2="134" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N3-N2" x1="430" y1="146" x2="380" y2="146" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N3-N4" x1="504" y1="213" x2="504" y2="297" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N4-N3" x1="516" y1="297" x2="516" y2="213" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N4-N5" x1="504" y1="443" x2="504" y2="527" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
+      <line id="fp-edge-N5-N4" x1="516" y1="527" x2="516" y2="443" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-safe)" style="display:none"/>
 
       <!-- Danger pulse rings -->
-      <circle id="fp-pulse-N1" cx="100" cy="120" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
-      <circle id="fp-pulse-N2" cx="300" cy="120" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
-      <circle id="fp-pulse-N3" cx="500" cy="120" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
-      <circle id="fp-pulse-N4" cx="500" cy="280" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
-      <circle id="fp-pulse-N5" cx="500" cy="420" r="62" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N1" cx="108" cy="140" r="82" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N2" cx="308" cy="140" r="82" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N3" cx="508" cy="140" r="82" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N4" cx="508" cy="370" r="82" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
+      <circle id="fp-pulse-N5" cx="508" cy="598" r="82" fill="none" stroke="#fca5a5" stroke-width="2.5" opacity="0" class="fp-danger-pulse" style="animation-play-state:paused"/>
 
-      <!-- Node circles (r=55, diameter=110px) -->
-      <circle id="fp-N1" cx="100" cy="120" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N1')" style="cursor:pointer"/>
-      <circle id="fp-N2" cx="300" cy="120" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N2')" style="cursor:pointer"/>
-      <circle id="fp-N3" cx="500" cy="120" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N3')" style="cursor:pointer"/>
-      <circle id="fp-N4" cx="500" cy="280" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N4')" style="cursor:pointer"/>
-      <circle id="fp-N5" cx="500" cy="420" r="55" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N5')" style="cursor:pointer"/>
+      <!-- Node circles (r=70) -->
+      <circle id="fp-N1" cx="108" cy="140" r="70" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N1')" style="cursor:pointer"/>
+      <circle id="fp-N2" cx="308" cy="140" r="70" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N2')" style="cursor:pointer"/>
+      <circle id="fp-N3" cx="508" cy="140" r="70" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N3')" style="cursor:pointer"/>
+      <circle id="fp-N4" cx="508" cy="370" r="70" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N4')" style="cursor:pointer"/>
+      <circle id="fp-N5" cx="508" cy="598" r="70" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2.5" onclick="openSidebar('N5')" style="cursor:pointer"/>
 
-      <!-- Node labels -->
-      <text id="fp-label-N1" x="100" y="113" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N1</text>
-      <text id="fp-sub-N1"   x="100" y="132" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">北側出口</text>
-      <text id="fp-label-N2" x="300" y="113" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N2</text>
-      <text id="fp-sub-N2"   x="300" y="132" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">西北走廊</text>
-      <text id="fp-label-N3" x="500" y="113" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N3</text>
-      <text id="fp-sub-N3"   x="500" y="132" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">中央大廳</text>
-      <text id="fp-label-N4" x="500" y="273" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N4</text>
-      <text id="fp-sub-N4"   x="500" y="292" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">東南走廊</text>
-      <text id="fp-label-N5" x="500" y="413" text-anchor="middle" font-family="Inter,sans-serif" font-size="15" font-weight="700" fill="#374151" pointer-events="none">N5</text>
-      <text id="fp-sub-N5"   x="500" y="432" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" fill="#6b7280" pointer-events="none">南側出口</text>
-
-      <!-- Arrow groups (centered on each node) -->
-      <g id="fp-arrow-N1" transform="translate(100,120)"></g>
-      <g id="fp-arrow-N2" transform="translate(300,120)"></g>
-      <g id="fp-arrow-N3" transform="translate(500,120)"></g>
-      <g id="fp-arrow-N4" transform="translate(500,280)"></g>
-      <g id="fp-arrow-N5" transform="translate(500,420)"></g>
+      <!-- Node labels: ID / 名稱 / 狀態 -->
+      <!-- N1 -->
+      <text id="fp-label-N1" x="108" y="124" text-anchor="middle" font-family="Inter,sans-serif" font-size="20" font-weight="700" fill="#374151" pointer-events="none">N1</text>
+      <text id="fp-sub-N1"   x="108" y="147" text-anchor="middle" font-family="Inter,sans-serif" font-size="14" fill="#6b7280" pointer-events="none">北側出口</text>
+      <text id="fp-state-N1" x="108" y="168" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#6b7280" pointer-events="none">閒置</text>
+      <!-- N2 -->
+      <text id="fp-label-N2" x="308" y="124" text-anchor="middle" font-family="Inter,sans-serif" font-size="20" font-weight="700" fill="#374151" pointer-events="none">N2</text>
+      <text id="fp-sub-N2"   x="308" y="147" text-anchor="middle" font-family="Inter,sans-serif" font-size="14" fill="#6b7280" pointer-events="none">西北走廊</text>
+      <text id="fp-state-N2" x="308" y="168" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#6b7280" pointer-events="none">閒置</text>
+      <!-- N3 -->
+      <text id="fp-label-N3" x="508" y="124" text-anchor="middle" font-family="Inter,sans-serif" font-size="20" font-weight="700" fill="#374151" pointer-events="none">N3</text>
+      <text id="fp-sub-N3"   x="508" y="147" text-anchor="middle" font-family="Inter,sans-serif" font-size="14" fill="#6b7280" pointer-events="none">中央大廳</text>
+      <text id="fp-state-N3" x="508" y="168" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#6b7280" pointer-events="none">閒置</text>
+      <!-- N4 -->
+      <text id="fp-label-N4" x="508" y="354" text-anchor="middle" font-family="Inter,sans-serif" font-size="20" font-weight="700" fill="#374151" pointer-events="none">N4</text>
+      <text id="fp-sub-N4"   x="508" y="377" text-anchor="middle" font-family="Inter,sans-serif" font-size="14" fill="#6b7280" pointer-events="none">東南走廊</text>
+      <text id="fp-state-N4" x="508" y="398" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#6b7280" pointer-events="none">閒置</text>
+      <!-- N5 -->
+      <text id="fp-label-N5" x="508" y="582" text-anchor="middle" font-family="Inter,sans-serif" font-size="20" font-weight="700" fill="#374151" pointer-events="none">N5</text>
+      <text id="fp-sub-N5"   x="508" y="605" text-anchor="middle" font-family="Inter,sans-serif" font-size="14" fill="#6b7280" pointer-events="none">南側出口</text>
+      <text id="fp-state-N5" x="508" y="626" text-anchor="middle" font-family="Inter,sans-serif" font-size="13" font-weight="600" fill="#6b7280" pointer-events="none">閒置</text>
     </svg>
   </div>
   <!-- View: Spatial Layout -->
@@ -705,6 +795,75 @@
     <div class="sidebar-empty">點擊節點卡片以查看詳情</div>
   </div>
 </div>
+<!-- Node Fullscreen View -->
+<div id="node-fullscreen">
+  <div class="nf-header">
+    <div class="nf-logo">
+      <div class="nf-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div class="nf-logo-text">SmartEvac</div>
+    </div>
+    <span id="nf-conn-status" class="conn-badge connecting">Connecting...</span>
+  </div>
+
+  <div class="nf-card idle" id="nf-card">
+    <!-- Row 1: ID + status -->
+    <div class="nf-row-id">
+      <div>
+        <div class="nf-node-id" id="nf-node-id">N1</div>
+        <div class="nf-node-name" id="nf-node-name">北側出口</div>
+      </div>
+      <span class="nf-status-badge idle" id="nf-status">待機中</span>
+    </div>
+
+    <!-- Row 2: Direction arrow -->
+    <div class="nf-row-arrow">
+      <div class="nf-arrow-wrap" id="nf-arrow-wrap">
+        <svg id="nf-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" stroke-dasharray="4 2" opacity="0.4"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Row 3: Sensor readings -->
+    <div class="nf-row-sensors">
+      <div class="nf-sensor">
+        <div class="nf-sensor-label">MQ-2</div>
+        <div class="nf-sensor-value" id="nf-mq2">—</div>
+      </div>
+      <div class="nf-sensor">
+        <div class="nf-sensor-label">MQ-135</div>
+        <div class="nf-sensor-value" id="nf-mq135">—</div>
+      </div>
+      <div class="nf-sensor">
+        <div class="nf-sensor-label">溫度</div>
+        <div class="nf-sensor-value" id="nf-temp">—</div>
+      </div>
+    </div>
+
+    <!-- Row 4: Voice text -->
+    <div class="nf-row-text">
+      <div class="nf-text-content" id="nf-text">系統待命中</div>
+    </div>
+  </div>
+
+  <!-- Audio mute toggle (bottom-right) -->
+  <button class="nf-audio-btn" id="nf-audio-btn" onclick="toggleNfAudio()" title="切換靜音">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+    </svg>
+  </button>
+  <!-- hidden audio element for node mode -->
+  <audio id="nf-audio" style="display:none"></audio>
+</div>
+
 <!-- Scripts -->
 <!-- config.js only loaded on localhost (not needed on S3) -->
 <script>
@@ -722,27 +881,33 @@ if (typeof SMARTEVAC_CONFIG === 'undefined') { window.SMARTEVAC_CONFIG = {}; }
 </script>
 <script>
 // ── Setup screen state ──────────────────────────────────────────────────────
-var selectedRole = '';   // '' = monitor, 'N1'..'N5' = node
-var audioMode    = 'role'; // 'role' | 'mute'
+var selectedRole = '';   // '' = 指揮中心, 'N1'..'N5' = node
+var audioMode    = 'mute'; // 指揮中心預設靜音；節點模式預設播放
+var ctrlAudioOn  = false;  // 指揮中心音訊開關狀態
+var nfAudioMuted = false;  // 節點全螢幕音訊靜音狀態
 
 var NODE_LABELS = {
   N1: '北側出口', N2: '西北走廊', N3: '中央大廳', N4: '東南走廊', N5: '南側出口'
 };
 
 function enterSystem() {
-  // Use SMARTEVAC_CONFIG from config.js (loaded via ngrok from host machine)
   selectedRole = document.getElementById('role-select').value;
-  var radios = document.querySelectorAll('input[name="audio-mode"]');
-  radios.forEach(function(r) { if (r.checked) audioMode = r.value; });
+
+  // 指揮中心：預設靜音；節點：預設播放
+  audioMode = (selectedRole === '') ? 'mute' : 'play';
 
   var badge = document.getElementById('role-badge');
   badge.style.display = '';
   if (selectedRole === '') {
-    badge.textContent = '監控模式';
+    badge.textContent = '指揮中心';
     badge.className = 'role-badge monitor';
+    // 顯示指揮中心音訊開關
+    document.getElementById('ctrl-audio-btn').style.display = '';
   } else {
     badge.textContent = selectedRole + ' ' + (NODE_LABELS[selectedRole] || '');
     badge.className = 'role-badge node';
+    // 啟動節點全螢幕
+    showNodeFullscreen(selectedRole);
   }
 
   var overlay = document.getElementById('setup-overlay');
@@ -752,6 +917,96 @@ function enterSystem() {
     overlay.style.display = 'none';
     connectMqtt();
   }, 300);
+}
+
+// ── 指揮中心音訊開關 ────────────────────────────────────────────────────────────
+function toggleCtrlAudio() {
+  ctrlAudioOn = !ctrlAudioOn;
+  audioMode = ctrlAudioOn ? 'play' : 'mute';
+  var btn = document.getElementById('ctrl-audio-btn');
+  btn.textContent = ctrlAudioOn ? '🔊 音訊開啟' : '🔇 靜音中';
+  btn.style.background = ctrlAudioOn ? '#f0fdf4' : '#ffffff';
+  btn.style.borderColor = ctrlAudioOn ? '#86efac' : '#e5e7eb';
+  btn.style.color = ctrlAudioOn ? '#16a34a' : '#374151';
+}
+
+// ── 節點全螢幕音訊開關 ────────────────────────────────────────────────────────
+function toggleNfAudio() {
+  nfAudioMuted = !nfAudioMuted;
+  var btn = document.getElementById('nf-audio-btn');
+  btn.classList.toggle('muted', nfAudioMuted);
+  btn.innerHTML = nfAudioMuted
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+}
+
+// ── 節點全螢幕顯示 ────────────────────────────────────────────────────────────
+function showNodeFullscreen(nodeId) {
+  var fs = document.getElementById('node-fullscreen');
+  fs.classList.add('active');
+  document.getElementById('nf-node-id').textContent = nodeId;
+  document.getElementById('nf-node-name').textContent = NODE_LABELS[nodeId] || nodeId;
+}
+
+function updateNodeFullscreen(nodeId, cmd) {
+  if (selectedRole !== nodeId) return;
+  var card    = document.getElementById('nf-card');
+  var status  = document.getElementById('nf-status');
+  var arrowSvg = document.getElementById('nf-arrow-svg');
+  var textEl  = document.getElementById('nf-text');
+
+  var isContaminated = cmd.is_contaminated;
+  var isExit = cmd.is_exit;
+  var dir = cmd.direction || '?';
+
+  // Card state
+  card.className = 'nf-card ' + (isContaminated ? 'danger' : (isExit ? 'exit' : 'safe'));
+
+  // Status badge
+  status.className = 'nf-status-badge ' + (isContaminated ? 'danger' : (isExit ? 'exit' : 'safe'));
+  status.textContent = isContaminated ? '⚠ 危險' : (isExit ? '✓ 出口' : '→ 疏散');
+
+  // Arrow
+  var rotations = { '↓': 180, '←': 270, '→': 90, '↑': 0 };
+  var rotation = rotations[dir];
+  if (dir === '🛑' || rotation === undefined) {
+    arrowSvg.innerHTML = '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>';
+    arrowSvg.style.transform = '';
+  } else {
+    arrowSvg.innerHTML = '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>';
+    arrowSvg.style.transform = 'rotate(' + rotation + 'deg)';
+  }
+
+  // 文字和音訊由 play_schedule MQTT 訊息統一排程，這裡不自行播放
+  textEl.textContent = '';
+  textEl.style.color = '';  // 清除待機時的綠色
+}
+
+function updateNodeFullscreenSensors(nodeId, reading) {
+  if (selectedRole !== nodeId) return;
+  var mq2El   = document.getElementById('nf-mq2');
+  var mq135El = document.getElementById('nf-mq135');
+  var tempEl  = document.getElementById('nf-temp');
+  var textEl  = document.getElementById('nf-text');
+  var card    = document.getElementById('nf-card');
+
+  if (reading.mq2   !== undefined) {
+    mq2El.textContent = reading.mq2.toFixed(2);
+    mq2El.className = 'nf-sensor-value' + (reading.mq2 > 0.5 ? ' alert' : reading.mq2 > 0.35 ? ' warn' : '');
+  }
+  if (reading.mq135 !== undefined) {
+    mq135El.textContent = reading.mq135.toFixed(2);
+    mq135El.className = 'nf-sensor-value' + (reading.mq135 > 0.7 ? ' alert' : reading.mq135 > 0.49 ? ' warn' : '');
+  }
+  if (reading.temp_c !== undefined) {
+    tempEl.textContent = reading.temp_c.toFixed(1) + '°C';
+    tempEl.className = 'nf-sensor-value' + (reading.temp_c > 35 ? ' alert' : reading.temp_c > 28 ? ' warn' : '');
+  }
+  // 待機狀態下顯示「系統正常」
+  if (card && card.classList.contains('idle') && textEl) {
+    textEl.textContent = '✓ 系統正常，感測器運作中';
+    textEl.style.color = '#16a34a';
+  }
 }
 
 // ── Per-node mute ────────────────────────────────────────────────────────────
@@ -775,28 +1030,91 @@ function updateMuteIcon(nodeId) {
 }
 
 // ── Audio filtering ─────────────────────────────────────────────────────────
-function shouldPlayAudio(nodeId, isContaminated) {
+function shouldPlayAudio(nodeId) {
   if (audioMode === 'mute') return false;
   if (nodeMuteState[nodeId]) return false;
+  // 指揮中心：audioMode='play' 時全部播；節點模式：scheduleAudioPlayback 不用，由 updateNodeFullscreen 處理
   if (selectedRole === '') {
-    return isContaminated;
+    return audioMode === 'play';
   } else {
-    return nodeId === selectedRole;
+    // 節點模式音訊由 updateNodeFullscreen 直接控制，這裡回傳 false 避免重複播
+    return false;
   }
 }
 
 // ── Typewriter effect ────────────────────────────────────────────────────────
+// 回傳 cancel 函式，可在需要時中止
+// ── Active typewriter registry ───────────────────────────────────────────────
+// 追蹤所有進行中的打字機 cancel 函式，resetAll 時統一清除
+var activeTypewriterCancels = [];
+
+function registerTypewriter(cancelFn) {
+  if (typeof cancelFn === 'function') activeTypewriterCancels.push(cancelFn);
+}
+
+function cancelAllTypewriters() {
+  activeTypewriterCancels.forEach(function(fn) { try { fn(); } catch(e) {} });
+  activeTypewriterCancels = [];
+}
+
 function typewriterEffect(element, text, durationMs) {
   element.textContent = '';
-  if (!text) return;
+  if (!text) return function() {};
   var chars = text.split('');
-  var interval = durationMs / chars.length;
+  var interval = Math.max(16, durationMs / chars.length);
   var i = 0;
+  var cancelled = false;
   var timer = setInterval(function() {
+    if (cancelled) { clearInterval(timer); return; }
     element.textContent += chars[i];
     i++;
     if (i >= chars.length) clearInterval(timer);
   }, interval);
+  var cancel = function() { cancelled = true; clearInterval(timer); };
+  registerTypewriter(cancel);
+  return cancel;
+}
+
+// ── Audio-synced typewriter ───────────────────────────────────────────────────
+// 根據 audio.currentTime 即時更新文字，打字速度完全跟著語音走
+function audioSyncedTypewriter(element, text, audioEl) {
+  element.textContent = '';
+  if (!text || !audioEl) return function() {};
+  var chars = text.split('');
+  var total = chars.length;
+  var lastShown = 0;
+  var cancelled = false;
+
+  function onTimeUpdate() {
+    if (cancelled) { audioEl.removeEventListener('timeupdate', onTimeUpdate); return; }
+    if (!audioEl.duration || !isFinite(audioEl.duration)) return;
+    var progress = audioEl.currentTime / audioEl.duration;
+    var shouldShow = Math.min(Math.ceil(progress * total), total);
+    if (shouldShow > lastShown) {
+      element.textContent = chars.slice(0, shouldShow).join('');
+      lastShown = shouldShow;
+    }
+    if (lastShown >= total) {
+      audioEl.removeEventListener('timeupdate', onTimeUpdate);
+    }
+  }
+
+  function onEnded() {
+    if (!cancelled) element.textContent = text;
+    audioEl.removeEventListener('timeupdate', onTimeUpdate);
+    audioEl.removeEventListener('ended', onEnded);
+  }
+
+  audioEl.addEventListener('timeupdate', onTimeUpdate);
+  audioEl.addEventListener('ended', onEnded);
+
+  var cancel = function() {
+    cancelled = true;
+    audioEl.removeEventListener('timeupdate', onTimeUpdate);
+    audioEl.removeEventListener('ended', onEnded);
+  };
+  registerTypewriter(cancel);
+  return cancel;
 }
 
 // ── SVG helpers ──────────────────────────────────────────────────────────────
@@ -899,6 +1217,7 @@ var nodeHistory = {};  // {nodeId: [{...reading, ts}]} last 20 per node
 var activeTab = 'list';
 var sidebarNodeId = null;
 var sidebarTab = 'node';
+var pendingCmds = {};  // 本輪收到的所有 cmd，等全部到齊後排程播放
 
 var SCENARIO_NAMES = {
   'chemical_lab_leak': '化學實驗室外洩',
@@ -935,11 +1254,37 @@ async function connectMqtt() {
       });
       // Subscribe to telemetry topics (raw sensor values for the panel)
       mqttClient.subscribe('smartevac/telemetry/+', { qos: 0 }, function() {});
+      // Subscribe to reset topic (節點全螢幕同步重置)
+      mqttClient.subscribe('smartevac/reset', { qos: 0 }, function() {});
+      // Subscribe to play_schedule (節點裝置接收播放時間表)
+      mqttClient.subscribe('smartevac/play_schedule', { qos: 0 }, function() {});
     });
 
     mqttClient.on('message', function(topic, payload) {
       try {
         var data = JSON.parse(payload.toString());
+
+        // Handle reset signal (節點全螢幕同步重置)
+        if (topic === 'smartevac/reset') {
+          resetNodeFullscreen();
+          return;
+        }
+
+        // Handle play_schedule (節點裝置接收播放時間表)
+        if (topic === 'smartevac/play_schedule') {
+          // 只有節點裝置才處理（指揮中心自己已在 scheduleAudioPlayback 裡執行）
+          if (selectedRole !== '' && data.schedule && data.cmds) {
+            playbackAborted = false;
+            // data.schedule 是 {nodeId: absoluteTimestamp}，轉成 offset
+            var now = Date.now();
+            var offsets = {};
+            Object.keys(data.schedule).forEach(function(nid) {
+              offsets[nid] = Math.max(0, data.schedule[nid] - now);
+            });
+            executePlaySchedule(data.cmds, data.durations || {}, 0, offsets);
+          }
+          return;
+        }
 
         // Handle telemetry messages (raw sensor values)
         if (topic.startsWith('smartevac/telemetry/')) {
@@ -952,6 +1297,8 @@ async function connectMqtt() {
             if (data.temp_c !== undefined) nodeReadings[telNodeId].temp_c = data.temp_c;
             nodeReadings[telNodeId].ts = Date.now();
             updateTelemetryDisplay();
+            // 節點全螢幕感測器更新
+            updateNodeFullscreenSensors(telNodeId, nodeReadings[telNodeId]);
           }
           return;
         }
@@ -966,33 +1313,90 @@ async function connectMqtt() {
         if (runId !== iotCurrentRunId) {
           iotCurrentRunId = runId;
           iotReceivedNodes = new Set();
+          pendingCmds = {};  // 重置本輪收集
         }
         iotReceivedNodes.add(nodeId);
 
-        renderNode(nodeId, cmd);
+        // 先渲染視覺（不播音訊），音訊由 scheduleAudioPlayback 統一排程
+        renderNode(nodeId, cmd, false);
         appendLog(topic, cmd);
+
+        // 收集本輪所有 cmd
+        pendingCmds[nodeId] = cmd;
+
+        // 節點全螢幕更新（節點模式）
+        if (selectedRole !== '') updateNodeFullscreen(nodeId, cmd);
+
+        // 更新情境按鈕進度（指揮中心）
+        if (selectedRole === '') {
+          var received = iotReceivedNodes.size;
+          var total = NODES.length;
+          var scenarioBtnIds = ['btn-chem', 'btn-fire', 'btn-gas'];
+          scenarioBtnIds.forEach(function(id) {
+            var b = document.getElementById(id);
+            if (b && b.classList.contains('btn-loading')) {
+              b.textContent = '📡 接收中 ' + received + '/' + total;
+            }
+          });
+        }
 
         if (iotReceivedNodes.size >= NODES.length) {
           lastRenderedRunId = runId;
           stopTimer();
           stopPolling();
+          // 按鈕顯示完成，3 秒後恢復
+          if (selectedRole === '') {
+            var scenarioBtnIds2 = ['btn-chem', 'btn-fire', 'btn-gas'];
+            scenarioBtnIds2.forEach(function(id) {
+              var b = document.getElementById(id);
+              if (b && b.classList.contains('btn-loading')) {
+                b.textContent = '✓ 完成';
+                b.style.background = '#16a34a';
+                b.style.borderColor = '#16a34a';
+              }
+            });
+            setTimeout(function() {
+              scenarioBtnIds2.forEach(function(id) {
+                var b = document.getElementById(id);
+                if (b) {
+                  b.style.background = '';
+                  b.style.borderColor = '';
+                  var names = { 'btn-chem': '化學實驗室外洩', 'btn-fire': '地下室火災', 'btn-gas': '瓦斯洩漏' };
+                  b.textContent = names[id] || id;
+                }
+              });
+            }, 3000);
+          }
+          // 指揮中心：預載 mp3、計算時間表、廣播 play_schedule
+          // 節點裝置：等待 play_schedule MQTT 訊息，不自行排程
+          if (selectedRole === '') {
+            scheduleAudioPlayback(pendingCmds);
+          }
         }
       } catch (e) {
         appendLog(topic, { raw: payload.toString() });
       }
     });
 
-    mqttClient.on('error', function(err) { setConnStatus('error', err.message); console.error('MQTT error:', err); });
+    mqttClient.on('error', function(err) { 
+      setConnStatus('error', err.message); 
+      console.error('MQTT error:', err);
+    });
     mqttClient.on('reconnect', function() { setConnStatus('connecting', 'Reconnecting...'); });
-    mqttClient.on('offline', function() { setConnStatus('error', 'Offline — check credentials & IoT endpoint'); console.warn('MQTT offline'); });
+    mqttClient.on('offline', function() { 
+      setConnStatus('error', 'IoT offline — S3 polling active');
+      console.warn('MQTT offline - WebSocket connection failed');
+    });
 
   } catch (e) {
     setConnStatus('error', 'Sign error: ' + e.message);
+    console.error('connectMqtt error:', e);
   }
 }
 
 // ── renderNode ───────────────────────────────────────────────────────────────
-function renderNode(nodeId, cmd) {
+function renderNode(nodeId, cmd, playAudio) {
+  if (playAudio === undefined) playAudio = true;
   var card   = document.getElementById('card-'   + nodeId);
   var arrow  = document.getElementById('arrow-'  + nodeId);
   var status = document.getElementById('status-' + nodeId);
@@ -1005,7 +1409,7 @@ function renderNode(nodeId, cmd) {
   var isContaminated = cmd.is_contaminated;
   var isExit = cmd.is_exit;
 
-  // Set arrow SVG
+  // Set arrow SVG（污染節點也顯示逃生方向）
   setArrowSvg(arrow, dir);
 
   card.classList.remove('idle', 'safe', 'danger', 'exit', 'updated');
@@ -1027,9 +1431,9 @@ function renderNode(nodeId, cmd) {
   // Unlock icon
   lock.innerHTML = LOCK_OPEN_SVG;
 
-  // Audio + typewriter
+  // Audio + typewriter（由 playAudio 參數控制，排程播放時才傳 true）
   var durationMs = 3000;
-  if (cmd.mp3_url && shouldPlayAudio(nodeId, isContaminated)) {
+  if (playAudio && cmd.mp3_url && shouldPlayAudio(nodeId)) {
     audio.src = cmd.mp3_url;
     audio.play().catch(function() {});
     audio.addEventListener('loadedmetadata', function onMeta() {
@@ -1044,6 +1448,10 @@ function renderNode(nodeId, cmd) {
     setTimeout(function() {
       if (text.textContent === '') typewriterEffect(text, cmd.text || '—', durationMs);
     }, 500);
+  } else if (!playAudio) {
+    // 視覺渲染階段：先顯示文字（不播音訊），等 executePlaySchedule 輪到時再跑打字機
+    // 若 executePlaySchedule 未執行，文字仍可見
+    text.textContent = cmd.text || '—';
   } else {
     typewriterEffect(text, cmd.text || '—', durationMs);
   }
@@ -1081,6 +1489,152 @@ function renderNode(nodeId, cmd) {
 
   // Refresh sidebar if open for this node
   if (sidebarNodeId) refreshSidebarContent();
+}
+
+// ── scheduleAudioPlayback ─────────────────────────────────────────────────────
+// 設計：先預載所有 mp3 取得 duration，計算每個節點的絕對播放時間，
+// 再透過 MQTT 廣播 play_schedule，讓所有裝置在相同時間點播放
+
+var playbackAborted = false;
+var nodePlayOffsets = {};  // {nodeId: ms offset from schedule baseTime}
+var INTER_NODE_GAP_MS = 400;  // 節點間靜音間隔
+
+function scheduleAudioPlayback(cmds) {
+  playbackAborted = false;
+  nodePlayOffsets = {};
+
+  var ordered = Object.keys(cmds).sort(function(a, b) {
+    return (cmds[a].evacuation_order || 99) - (cmds[b].evacuation_order || 99);
+  });
+  if (ordered.length === 0) return;
+
+  // Step 1：並行預載所有 mp3，取得 duration
+  function loadDuration(nodeId) {
+    var url = cmds[nodeId].mp3_url;
+    if (!url) return Promise.resolve({ nodeId: nodeId, duration: 3.0 });
+    return new Promise(function(resolve) {
+      var probe = new Audio();
+      var done = false;
+      function finish(dur) {
+        if (done) return; done = true;
+        resolve({ nodeId: nodeId, duration: (dur && isFinite(dur) && dur > 0) ? dur : 3.0 });
+      }
+      probe.addEventListener('loadedmetadata', function() { finish(probe.duration); });
+      probe.addEventListener('error', function() { finish(3.0); });
+      setTimeout(function() { finish(3.0); }, 4000);
+      probe.src = url;
+      probe.load();
+    });
+  }
+
+  // 預載完成後計算 offset 並廣播
+  var preloadStart = Date.now();
+  Promise.all(ordered.map(loadDuration)).then(function(results) {
+    if (playbackAborted) return;
+
+    var durations = {};
+    results.forEach(function(r) { durations[r.nodeId] = r.duration; });
+
+    // Step 2：計算串接式 offset
+    var offset = 0;
+    ordered.forEach(function(nodeId) {
+      nodePlayOffsets[nodeId] = offset;
+      offset += durations[nodeId] * 1000 + INTER_NODE_GAP_MS;
+    });
+
+    // Step 3：計算基準時間（預載耗時後的現在 + 500ms 緩衝）
+    var baseTime = Date.now() + 500;
+
+    // Step 4：廣播 play_schedule 給所有節點裝置
+    if (mqttClient && mqttClient.connected) {
+      var schedule = {};
+      ordered.forEach(function(nodeId) {
+        schedule[nodeId] = baseTime + nodePlayOffsets[nodeId];
+      });
+      mqttClient.publish('smartevac/play_schedule', JSON.stringify({
+        run_id: cmds[ordered[0]].run_id || '',
+        schedule: schedule,
+        durations: durations,
+        cmds: cmds
+      }), { qos: 0 });
+    }
+
+    // Step 5：指揮中心自己也執行播放排程
+    executePlaySchedule(cmds, durations, baseTime, nodePlayOffsets);
+  });
+}
+
+// ── executePlaySchedule ───────────────────────────────────────────────────────
+// 依 schedule 在指定時間點播放（指揮中心和節點共用邏輯）
+// baseTime=0 時，offsets 直接當 delay（ms from now）使用
+function executePlaySchedule(cmds, durations, baseTime, offsets) {
+  var ordered = Object.keys(offsets).sort(function(a, b) {
+    return offsets[a] - offsets[b];
+  });
+
+  ordered.forEach(function(nodeId) {
+    var cmd = cmds[nodeId];
+    if (!cmd) return;
+    var delay = baseTime > 0
+      ? Math.max(0, (baseTime + offsets[nodeId]) - Date.now())
+      : Math.max(0, offsets[nodeId]);
+    var dur = (durations[nodeId] || 3.0) * 1000;
+
+    // 指揮中心：更新 text-Nx 打字機
+    var text = document.getElementById('text-' + nodeId);
+    // 節點全螢幕：若此裝置是該節點
+    var nfTextEl = (selectedRole === nodeId) ? document.getElementById('nf-text') : null;
+
+    setTimeout(function() {
+      if (playbackAborted) return;
+
+      var canPlay = !!(cmd.mp3_url && shouldPlayAudio(nodeId));
+      var canPlayNf = !!(selectedRole === nodeId && cmd.mp3_url && !nfAudioMuted);
+
+      if (canPlay && text) {
+        // 指揮中心有音訊：播放 + audio-synced 打字機
+        var audio = document.getElementById('audio-' + nodeId);
+        if (audio) {
+          audio.onended = null; audio.onerror = null;
+          audio.src = cmd.mp3_url;
+          audio.load();
+          var twDone = false;
+          audio.addEventListener('play', function onPlay() {
+            audio.removeEventListener('play', onPlay);
+            if (!twDone) { twDone = true; audioSyncedTypewriter(text, cmd.text || '—', audio); }
+          });
+          audio.play().catch(function() {});
+          setTimeout(function() {
+            if (!twDone) { twDone = true; typewriterEffect(text, cmd.text || '—', dur); }
+          }, 800);
+        }
+      } else if (text) {
+        // 指揮中心靜音：打字機速度對齊語音長度
+        typewriterEffect(text, cmd.text || '—', dur);
+      }
+
+      if (canPlayNf && nfTextEl) {
+        // 節點全螢幕有音訊
+        var nfAudio = document.getElementById('nf-audio');
+        if (nfAudio) {
+          nfAudio.src = cmd.mp3_url;
+          nfAudio.load();
+          var nfTwDone = false;
+          nfAudio.addEventListener('play', function onNfPlay() {
+            nfAudio.removeEventListener('play', onNfPlay);
+            if (!nfTwDone) { nfTwDone = true; audioSyncedTypewriter(nfTextEl, cmd.text || '—', nfAudio); }
+          });
+          nfAudio.play().catch(function() {});
+          setTimeout(function() {
+            if (!nfTwDone) { nfTwDone = true; typewriterEffect(nfTextEl, cmd.text || '—', dur); }
+          }, 800);
+        }
+      } else if (nfTextEl) {
+        // 節點全螢幕靜音
+        typewriterEffect(nfTextEl, cmd.text || '—', dur);
+      }
+    }, delay);
+  });
 }
 
 // ── Spatial view mirror ───────────────────────────────────────────────────────
@@ -1135,7 +1689,7 @@ function updateFloorPlanNode(nodeId, isContaminated, isExit, dir) {
   var circle = document.getElementById('fp-' + nodeId);
   var label  = document.getElementById('fp-label-' + nodeId);
   var pulse  = document.getElementById('fp-pulse-' + nodeId);
-  var arrowG = document.getElementById('fp-arrow-' + nodeId);
+  var stateEl = document.getElementById('fp-state-' + nodeId);
   if (!circle) return;
 
   var state = isContaminated ? 'danger' : (isExit ? 'exit' : 'safe');
@@ -1144,6 +1698,12 @@ function updateFloorPlanNode(nodeId, isContaminated, isExit, dir) {
   circle.setAttribute('stroke', c.stroke);
   label.setAttribute('fill', c.text);
 
+  // 更新狀態標籤文字與顏色
+  if (stateEl) {
+    stateEl.textContent = isContaminated ? '危險' : (isExit ? '出口' : '疏散');
+    stateEl.setAttribute('fill', c.text);
+  }
+
   // Pulse ring for danger
   if (isContaminated) {
     pulse.setAttribute('opacity', '0.6');
@@ -1151,19 +1711,6 @@ function updateFloorPlanNode(nodeId, isContaminated, isExit, dir) {
   } else {
     pulse.setAttribute('opacity', '0');
     pulse.style.animationPlayState = 'paused';
-  }
-
-  // Direction arrow inside circle
-  var rotations = { '\u2193': 180, '\u2190': 90, '\u2192': 270, '\u2191': 0 };
-  var rotation = rotations[dir];
-  if (dir === '\uD83D\uDED1' || rotation === undefined) {
-    arrowG.innerHTML = '<text y="5" text-anchor="middle" font-size="14" fill="' + c.text + '">!</text>';
-  } else {
-    var rad = (rotation - 90) * Math.PI / 180;
-    var ax = Math.round(Math.cos(rad) * 10);
-    var ay = Math.round(Math.sin(rad) * 10);
-    arrowG.innerHTML = '<line x1="0" y1="0" x2="' + ax + '" y2="' + ay + '" stroke="' + c.text + '" stroke-width="2.5" stroke-linecap="round"/>' +
-      '<polygon points="' + ax + ',' + ay + ' ' + (ax - 4) + ',' + (ay - 6) + ' ' + (ax + 4) + ',' + (ay - 6) + '" fill="' + c.text + '" transform="rotate(' + rotation + ')"/>';
   }
 }
 
@@ -1283,6 +1830,7 @@ function triggerScenario(name) {
     b.disabled = true;
     b.classList.add('btn-loading');
     b.classList.remove('btn-scenario');
+    b.textContent = '⏳ 觸發中...';
   });
 
   // Disable move hazard during loading
@@ -1303,6 +1851,10 @@ function triggerScenario(name) {
       b.disabled = false;
       b.classList.remove('btn-loading');
       b.classList.add('btn-scenario');
+      b.style.background = '';
+      b.style.borderColor = '';
+      var names = { 'btn-chem': '化學實驗室外洩', 'btn-fire': '地下室火災', 'btn-gas': '瓦斯洩漏' };
+      b.textContent = names[id] || id;
     });
     // Enable move hazard only if current scenario is phase1
     var moveBtn2 = document.getElementById('btn-move');
@@ -1322,6 +1874,11 @@ function moveHazard() {
 
 // ── resetAll ─────────────────────────────────────────────────────────────────
 function resetAll() {
+  // 中斷進行中的播放序列，防止 onerror/onended 在 reset 後繼續觸發
+  playbackAborted = true;
+  // 清除所有進行中的打字機（typewriterEffect + audioSyncedTypewriter）
+  cancelAllTypewriters();
+
   NODES.forEach(function(nodeId) {
     var card   = document.getElementById('card-'   + nodeId);
     var arrow  = document.getElementById('arrow-'  + nodeId);
@@ -1337,8 +1894,11 @@ function resetAll() {
     status.textContent = '閒置';
     text.textContent = '—';
     lock.innerHTML = LOCK_CLOSED_SVG;
-    audio.src = '';
+    // 先清除 handlers 再清 src，避免觸發 onerror
+    audio.onended = null;
+    audio.onerror = null;
     audio.pause();
+    audio.src = '';
 
     // Reset spatial
     var spCard   = document.getElementById('card-sp-' + nodeId);
@@ -1356,14 +1916,14 @@ function resetAll() {
     var fpCircle = document.getElementById('fp-' + nodeId);
     var fpLabel  = document.getElementById('fp-label-' + nodeId);
     var fpPulse  = document.getElementById('fp-pulse-' + nodeId);
-    var fpArrow  = document.getElementById('fp-arrow-' + nodeId);
+    var fpState  = document.getElementById('fp-state-' + nodeId);
     if (fpCircle) {
       fpCircle.setAttribute('fill', '#f3f4f6');
       fpCircle.setAttribute('stroke', '#e5e7eb');
       fpLabel.setAttribute('fill', '#374151');
       fpPulse.setAttribute('opacity', '0');
       fpPulse.style.animationPlayState = 'paused';
-      fpArrow.innerHTML = '';
+      if (fpState) { fpState.textContent = '閒置'; fpState.setAttribute('fill', '#6b7280'); }
     }
   });
 
@@ -1383,10 +1943,16 @@ function resetAll() {
   iotCurrentRunId = null;
   nodeReadings = {};
   nodeHistory = {};
+  pendingCmds = {};
 
-  document.getElementById('timer-bar').innerHTML = '<span class="timer-label">點擊情境按鈕開始</span>';
+  document.getElementById('timer-bar').innerHTML = '<span class="timer-label" style="color:#16a34a;font-weight:600;">✓ 已重置，系統待命中</span>';
   document.getElementById('mqtt-log').innerHTML = '<div class="log-empty">等待訊息中...</div>';
   logCount = 0;
+  // 2 秒後回到預設提示
+  setTimeout(function() {
+    var bar = document.getElementById('timer-bar');
+    if (bar) bar.innerHTML = '<span class="timer-label">點擊情境按鈕開始</span>';
+  }, 2000);
 
   // Disable move hazard
   document.getElementById('btn-move').disabled = true;
@@ -1408,6 +1974,41 @@ function resetAll() {
 
   // Close sidebar if open
   closeSidebar();
+
+  // 重置節點全螢幕（本機）並廣播 reset 訊號給其他節點
+  resetNodeFullscreen();
+  if (mqttClient && mqttClient.connected) {
+    mqttClient.publish('smartevac/reset', JSON.stringify({ ts: Date.now() }), { qos: 0 });
+  }
+}
+
+// ── resetNodeFullscreen ───────────────────────────────────────────────────────
+// 重置節點全螢幕 UI（本機執行，也由 MQTT reset topic 觸發）
+function resetNodeFullscreen() {
+  cancelAllTypewriters();
+  var nfAudioEl = document.getElementById('nf-audio');
+  if (nfAudioEl) {
+    nfAudioEl.onended = null;
+    nfAudioEl.onerror = null;
+    nfAudioEl.pause();
+    nfAudioEl.src = '';
+  }
+  var nfCard = document.getElementById('nf-card');
+  if (nfCard) {
+    nfCard.className = 'nf-card idle';
+    document.getElementById('nf-status').className = 'nf-status-badge idle';
+    document.getElementById('nf-status').textContent = '待機中';
+    document.getElementById('nf-text').textContent = '系統待命中';
+    document.getElementById('nf-mq2').textContent = '—';
+    document.getElementById('nf-mq135').textContent = '—';
+    document.getElementById('nf-temp').textContent = '—';
+    document.getElementById('nf-mq2').className = 'nf-sensor-value';
+    document.getElementById('nf-mq135').className = 'nf-sensor-value';
+    document.getElementById('nf-temp').className = 'nf-sensor-value';
+    var nfArrow = document.getElementById('nf-arrow-svg');
+    nfArrow.innerHTML = '<circle cx="12" cy="12" r="9" stroke-dasharray="4 2" opacity="0.4"/>';
+    nfArrow.style.transform = '';
+  }
 }
 
 // ── Timer ────────────────────────────────────────────────────────────────────
@@ -1481,6 +2082,57 @@ function setConnStatus(state, msg) {
   var el = document.getElementById('conn-status');
   el.className = 'conn-badge ' + state;
   el.textContent = msg;
+  // 同步節點全螢幕連線狀態
+  var nfEl = document.getElementById('nf-conn-status');
+  if (nfEl) { nfEl.className = 'conn-badge ' + state; nfEl.textContent = msg; }
+}
+
+// ── returnToSetup ─────────────────────────────────────────────────────────────
+function returnToSetup() {
+  if (!confirm('回到身份選擇頁面？目前的疏散狀態將會清除。')) return;
+  // 重置所有狀態
+  resetAll();
+  playbackAborted = false;  // resetAll 設為 true，重新進入系統前必須重置
+
+  // ── 音訊狀態完整重置 ──────────────────────────────────────────────────────
+  audioMode    = 'mute';
+  ctrlAudioOn  = false;
+  nfAudioMuted = false;
+  // 每個節點的個別靜音狀態
+  NODES.forEach(function(nid) { nodeMuteState[nid] = false; });
+  // 指揮中心音訊按鈕視覺重置
+  var ctrlBtn = document.getElementById('ctrl-audio-btn');
+  if (ctrlBtn) {
+    ctrlBtn.textContent = '🔇 靜音中';
+    ctrlBtn.style.background  = '#ffffff';
+    ctrlBtn.style.borderColor = '#e5e7eb';
+    ctrlBtn.style.color       = '#374151';
+  }
+  // 節點全螢幕靜音按鈕視覺重置
+  var nfBtn = document.getElementById('nf-audio-btn');
+  if (nfBtn) {
+    nfBtn.classList.remove('muted');
+    nfBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>';
+  }
+
+  // ── UI 重置 ───────────────────────────────────────────────────────────────
+  // 重置 role badge 和音訊按鈕
+  document.getElementById('role-badge').style.display = 'none';
+  document.getElementById('ctrl-audio-btn').style.display = 'none';
+  // 隱藏節點全螢幕
+  var fs = document.getElementById('node-fullscreen');
+  if (fs) fs.classList.remove('active');
+  // 重置 setup overlay 選項
+  document.getElementById('role-select').value = '';
+  selectedRole = '';
+  // 顯示 setup overlay
+  var overlay = document.getElementById('setup-overlay');
+  overlay.style.display = 'flex';
+  overlay.style.opacity = '0';
+  setTimeout(function() {
+    overlay.style.transition = 'opacity 0.3s ease';
+    overlay.style.opacity = '1';
+  }, 10);
 }
 
 // ── S3 polling fallback ───────────────────────────────────────────────────────
@@ -1504,14 +2156,19 @@ async function pollLatestRoutes() {
 
     lastRunId = runId;
 
+    var pollPendingCmds = {};
     for (var nodeId in commands) {
       if (runId === lastRenderedRunId) break;
-      renderNode(nodeId, commands[nodeId]);
+      renderNode(nodeId, commands[nodeId], false);
       appendLog('smartevac/cmd/' + nodeId, commands[nodeId]);
+      pollPendingCmds[nodeId] = commands[nodeId];
     }
     lastRenderedRunId = runId;
     stopTimer();
     stopPolling();
+    if (selectedRole === '') {
+      scheduleAudioPlayback(pollPendingCmds);
+    }
   } catch (e) {
     // silently ignore
   }

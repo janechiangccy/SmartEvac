@@ -1,6 +1,6 @@
-# SmartEvac — 整合說明文件
+﻿# SmartEvac — 整合說明文件
 
-**最後更新**：2026-05-02  
+**最後更新**：2026-05-03  
 **適用對象**：所有組員
 
 ---
@@ -52,7 +52,7 @@ hackerson/
 | 組員 A | `smartevac-cloud/` | ScenarioTrigger Lambda、HazardOrchestrator 骨架、Gemini、TTS、IoT publish、SAM template |
 | 組員 A | `smartevac-cloud/subscriber/` | Pi/Mac 訂閱端（IoT Certificate + MQTT over TLS） |
 | lxh | `smartevac-infra/` | DynamoDB 拓撲與時間序列、多源 Dijkstra 路徑規劃、z-score 污染判斷、seed 腳本 |
-| lxh | `smartevac-dashboard/` | 瀏覽器 Dashboard（SigV4 WebSocket、5 節點 UI、S3 polling fallback、Move Hazard、感測器面板） |
+| lxh | `smartevac-dashboard/` | 瀏覽器 Dashboard（SigV4 WebSocket、5 節點 UI、節點全螢幕模式、跨裝置語音同步、S3 polling fallback、Move Hazard、感測器面板） |
 
 ### 訂閱端連線方式對照
 
@@ -101,17 +101,17 @@ hackerson/
 
 | 情境 | 觸發節點 | 路徑規劃 | 耗時 | IoT publish |
 |---|---|---|---|---|
-| chemical_lab_leak | N3 | N1↓ N2← N3🛑 N4→ N5↓ | ~2,700ms | 5/5 ✅ |
+| chemical_lab_leak | N3 | N1← N2← N3🛑 N4→ N5↓ | ~2,700ms | 5/5 ✅ |
 | basement_fire | N1 | N1🛑 N2→ N3→ N4→ N5↓ | ~1,500ms | 5/5 ✅ |
-| gas_leak | N2 | N1↓ N2🛑 N3→ N4→ N5↓ | ~1,500ms | 5/5 ✅ |
+| gas_leak | N4 | N1← N2← N3← N4🛑 N5↓ | ~1,500ms | 5/5 ✅ |
 
 ### Phase 2（污染擴散）
 
 | 情境 | 污染節點 | 路徑規劃 | 說明 |
 |---|---|---|---|
-| chemical_lab_leak_phase2 | N2 + N3 | N1↓ N2🛑 N3🛑 N4→ N5↓ | 氣體從 N3 擴散到 N2 |
-| basement_fire_phase2 | N1 + N2 | N1🛑 N2🛑 N3→ N4→ N5↓ | 煙霧從 N1 擴散到 N2 |
-| gas_leak_phase2 | N2 + N3 | N1↓ N2🛑 N3🛑 N4→ N5↓ | 瓦斯從 N2 擴散到 N3 |
+| chemical_lab_leak_phase2 | N2 + N3 | N1← N2🛑 N3🛑 N4→ N5↓ | 氣體從 N3 擴散到 N2 |
+| basement_fire_phase2 | N1 + N2 | N1🛑 N2🛑 N3→ N4→ N5↓ | 火勢從 N1 擴散到 N2 |
+| gas_leak_phase2 | N4 + N5 | N1← N2← N3← N4🛑 N5🛑 | 瓦斯從 N4 擴散到 N5 |
 
 ---
 
@@ -153,6 +153,17 @@ hackerson/
 
 ---
 
+## 六之一、MQTT Topic 清單
+
+| Topic | 方向 | 說明 |
+|---|---|---|
+| `smartevac/telemetry/<node_id>` | ScenarioTrigger → IoT Core | 感測器讀值（mq2, mq135, temp_c, scenario） |
+| `smartevac/cmd/<node_id>` | HazardOrchestrator → Dashboard | 疏散指令（direction, text, mp3_url, evacuation_order） |
+| `smartevac/play_schedule` | 指揮中心 → 所有節點 | 語音播放時間表（絕對時間戳，確保跨裝置同步） |
+| `smartevac/reset` | 指揮中心 → 所有節點 | 重置訊號，清除所有節點狀態 |
+
+---
+
 ## 七、Dashboard 啟動方式
 
 ### 前置條件
@@ -184,16 +195,19 @@ python -m http.server 8080
 
 ngrok 把主控台電腦的 localhost 暴露成公開 HTTPS URL，其他電腦連這個 URL 即可，**不需要輸入任何 credentials**。
 
-```bash
-# 主控台電腦執行（兩個終端）
-python -m http.server 8080
-ngrok http 8080
-
-# 取得 URL（從 ngrok 輸出或開 http://localhost:4040）
-# 三台電腦開這個 URL，選角色後進入系統
+```powershell
+# 在 hackerson/ 目錄執行（一鍵啟動 Python server + ngrok）
+.\start-dashboard.ps1
 ```
 
-**credentials 過期時**：更新主控台電腦的 `config.js`，重新整理頁面即可。其他電腦不需要任何操作。
+執行後會顯示公開 URL，分享給所有裝置。按 Ctrl+C 停止。
+
+**身份選擇說明**：
+
+| 選項 | 說明 |
+|---|---|
+| 指揮中心（預設） | 監控所有節點，預設靜音，可手動開啟音訊 |
+| N1–N5 | 全螢幕節點模式，顯示該節點的疏散指引與語音 |
 
 ---
 

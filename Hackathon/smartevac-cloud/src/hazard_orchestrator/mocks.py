@@ -54,10 +54,12 @@ def score_contamination(triggering_node: str, telemetry: dict) -> set[str]:
     return routing.score_contamination(triggering_node, telemetry)
 
 
-def plan_routes(topology: dict, contaminated: set[str]) -> dict[str, dict]:
+def plan_routes(topology: dict, contaminated: set[str]) -> tuple[dict[str, dict], dict[str, float]]:
     """多源 Dijkstra 路徑規劃。
 
-    回傳格式與原 stub 完全相容：
-        {node_id: {direction, next_hop, hint}}
+    回傳格式：
+        (routes, dist)
+        routes: {node_id: {direction, next_hop, hint}}
+        dist:   {node_id: float} — 到最近安全出口的距離
     """
     return routing.plan_routes(topology, contaminated)

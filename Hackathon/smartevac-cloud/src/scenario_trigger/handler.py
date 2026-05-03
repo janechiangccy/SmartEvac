@@ -55,6 +55,23 @@ def _dynamo():
     return _dynamodb
 
 
+def _clear_telemetry_table() -> None:
+    """觸發新情境前清除 DynamoDB TelemetryTable 的所有舊資料，避免跨情境污染。"""
+    if not TELEMETRY_TABLE:
+        return
+    try:
+        table = _dynamo().Table(TELEMETRY_TABLE)
+        # Scan 取得所有 items（TelemetryTable 資料量小，scan 可接受）
+        response = table.scan(ProjectionExpression="node_id, ts")
+        items = response.get("Items", [])
+        with table.batch_writer() as batch:
+            for item in items:
+                batch.delete_item(Key={"node_id": item["node_id"], "ts": item["ts"]})
+        logger.info(f"[ClearTelemetry] Deleted {len(items)} stale records")
+    except Exception as e:
+        logger.warning(f"[ClearTelemetry] Failed (non-fatal): {e}")
+
+
 def _write_telemetry_to_dynamo(reading: dict) -> None:
     """Write telemetry reading to DynamoDB TelemetryTable."""
     if not TELEMETRY_TABLE:
@@ -134,6 +151,9 @@ def lambda_handler(event: dict, context) -> dict:
     if client is None:
         logger.warning("⚠️  IOT_ENDPOINT 未設定，dry-run（不實際 publish）")
 
+    # 清除舊 telemetry，避免上一個情境的資料影響本次污染判斷
+    _clear_telemetry_table()
+
     last_t = 0.0
     published = 0
     threshold_crossings = 0
@@ -174,6 +194,7 @@ def lambda_handler(event: dict, context) -> dict:
             "mq2": float(evt.get("mq2", 0.0)),
             "mq135": float(evt.get("mq135", 0.0)),
             "temp_c": float(evt.get("temp_c", 24.0)),
+            "scenario": name,
         }
         raw_level = compute_alert_level(reading)
         if raw_level == "alert":

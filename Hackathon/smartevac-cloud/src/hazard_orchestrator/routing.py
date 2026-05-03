@@ -101,7 +101,7 @@ DIRECTION_ARROWS = {
 def plan_routes(
     topology: dict[str, dict],
     contaminated: set[str],
-) -> dict[str, dict]:
+) -> tuple[dict[str, dict], dict[str, float]]:
     """Multi-source Dijkstra from all safe exits, returns per-node evacuation info.
 
     Args:
@@ -109,7 +109,10 @@ def plan_routes(
         contaminated: Set of node IDs marked as unsafe.
 
     Returns:
-        {node_id: {direction: str, next_hop: str|None, hint: str}}
+        Tuple of:
+        - routes: {node_id: {direction: str, next_hop: str|None, hint: str}}
+        - dist:   {node_id: float}  — Dijkstra distance from each node to nearest safe exit
+                  (smaller = closer to exit = farther from hazard source)
     """
     # Build adjacency list with contamination penalties
     adj: dict[str, list[tuple[str, float]]] = {}
@@ -158,13 +161,37 @@ def plan_routes(
     for nid, info in topology.items():
         label = info.get("human_label", nid)
 
-        # Contaminated node
+        # Contaminated node — still needs an evacuation direction
         if nid in contaminated:
-            routes[nid] = {
-                "direction": "🛑",
-                "next_hop": None,
-                "hint": f"Contamination source ({label}). Shelter in place, close doors.",
-            }
+            nh = next_toward_exit.get(nid)
+            # dist 含 penalty（最少 1000），只要 next_hop 存在就代表有路可走
+            if nh is not None and dist[nid] < math.inf:
+                # Has a reachable exit (even through contamination penalty)
+                neighbor_ids = [nb["node_id"] for nb in info.get("neighbors", [])]
+                if nh in neighbor_ids:
+                    idx = neighbor_ids.index(nh)
+                    if len(neighbor_ids) == 1:
+                        arrow = "→"
+                    elif idx == 0:
+                        arrow = "←"
+                    else:
+                        arrow = "→"
+                else:
+                    arrow = "→"
+                target_exit = exit_for.get(nid, nh)
+                target_label = topology.get(target_exit, {}).get("human_label", target_exit) if target_exit else label
+                routes[nid] = {
+                    "direction": arrow,
+                    "next_hop": nh,
+                    "hint": f"DANGER at {label}. Evacuate immediately toward {target_label}. Do not linger!",
+                }
+            else:
+                # No reachable exit — shelter in place
+                routes[nid] = {
+                    "direction": "🛑",
+                    "next_hop": None,
+                    "hint": f"DANGER at {label}. All exits blocked. Shelter in place, close doors and wait for rescue.",
+                }
             continue
 
         # Safe exit node
@@ -186,7 +213,7 @@ def plan_routes(
             }
             continue
 
-        # Normal node: determine direction arrow from neighbor index
+        # Normal safe node: determine direction arrow from neighbor index
         neighbor_ids = [nb["node_id"] for nb in info.get("neighbors", [])]
         if nh in neighbor_ids:
             idx = neighbor_ids.index(nh)
@@ -209,4 +236,4 @@ def plan_routes(
             "hint": f"Head toward {target_label} ({'left' if arrow == '←' else 'right'}).",
         }
 
-    return routes
+    return routes, dist

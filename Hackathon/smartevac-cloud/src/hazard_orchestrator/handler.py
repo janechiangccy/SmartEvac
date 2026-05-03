@@ -56,6 +56,7 @@ def parse_iot_alert(event: dict) -> dict:
         "mq135": float(event.get("mq135", 0.0)),
         "temp_c": float(event.get("temp_c", 0.0)),
         "alert_level": event.get("alert_level", "unknown"),
+        "scenario": event.get("scenario", "unknown"),
     }
 
 
@@ -107,15 +108,32 @@ def lambda_handler(event: dict, context) -> dict:
         triggering_node,
         mocks.load_recent_telemetry(),
     )
-    routes = mocks.plan_routes(topology, contaminated)
+    routes, dist = mocks.plan_routes(topology, contaminated)
     logger.info(
         f"[{run_id}] contaminated={sorted(contaminated)} "
         f"routes={ {n: r['direction'] for n, r in routes.items()} }"
     )
 
+    # 計算 evacuation_order：dist 越小 = 越靠近出口 = 越遠離污染源 = 越晚播
+    # dist 越大（或 inf）= 越靠近污染源 = 越先播（order=1）
+    # 污染節點 dist 因 penalty 很大，排在最前面
+    sorted_by_dist_desc = sorted(
+        routes.keys(),
+        key=lambda n: dist.get(n, float("inf")),
+        reverse=True,  # 最大 dist（最靠近污染源）排第一
+    )
+    evacuation_order_map = {nid: i + 1 for i, nid in enumerate(sorted_by_dist_desc)}
+
     # 3. Gemini 批次指令生成
+    # 把所有可用資訊傳入：情境名稱、觸發節點讀值、污染節點集合
+    scenario_name = event.get("scenario", "unknown")
     try:
-        texts = generate_batch_instructions(routes, topology, triggering_node)
+        texts = generate_batch_instructions(
+            routes, topology, triggering_node,
+            contaminated=contaminated,
+            alert=alert,
+            scenario_name=scenario_name,
+        )
     except (genai_errors.APIError, ValueError, json.JSONDecodeError) as e:
         logger.error(f"Gemini 失敗：{e}")
         return {"statusCode": 502, "body": json.dumps({"error": "gemini failed"})}
@@ -148,9 +166,10 @@ def lambda_handler(event: dict, context) -> dict:
             "direction": routes[node_id]["direction"],
             "next_hop": routes[node_id]["next_hop"],
             "text": texts[node_id],
-            "mp3_url": presigned_map[node_id],
+            "mp3_url": presigned_map.get(node_id, ""),
             "is_exit": topology[node_id]["is_exit"],
             "is_contaminated": node_id in contaminated,
+            "evacuation_order": evacuation_order_map.get(node_id, 99),
             "run_id": run_id,
             "timestamp": iso_ts,
         }

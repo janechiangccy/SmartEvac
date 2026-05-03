@@ -109,6 +109,7 @@ Resources:
           PRESIGNED_URL_TTL: !Ref PresignedUrlTtl
           TOPOLOGY_TABLE: SmartEvacTopology
           TELEMETRY_TABLE: SmartEvacTelemetry
+          PROMPT_STYLE: C
       Events:
         TelemetryAlert:
           Type: IoTRule
