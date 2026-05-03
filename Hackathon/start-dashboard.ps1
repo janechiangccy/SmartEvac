@@ -2,7 +2,7 @@
 # Starts Python HTTP server + ngrok, then shows the public URL.
 # Usage: .\start-dashboard.ps1  (run from repo root)
 
-$dashboardDir = Join-Path $PSScriptRoot "hackerson\smartevac-dashboard"
+$dashboardDir = Join-Path $PSScriptRoot "smartevac-dashboard"
 $ngrokExe     = "$env:TEMP\ngrok-v3\ngrok.exe"
 
 # ── Check ngrok ───────────────────────────────────────────────────────────
